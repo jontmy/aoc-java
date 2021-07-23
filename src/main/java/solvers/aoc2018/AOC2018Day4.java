@@ -5,10 +5,7 @@ import solvers.AOCDay;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 import static utils.DateUtils.*;
@@ -19,14 +16,14 @@ public class AOC2018Day4 extends AOCDay<Integer> {
         super(4, 2018);
     }
 
-    private static List<Entry> parse(List<String> input) {
+    private static List<Entry> parseEntries(List<String> input) {
         return input.stream()
-                .map(AOC2018Day4::parse)
+                .map(AOC2018Day4::parseEntry)
                 .sorted()
                 .toList();
     }
 
-    private static Entry parse(String input) {
+    private static Entry parseEntry(String input) {
         var regex = join(BEGINNING_OF_LINE,
                 "\\[", String.join("-", REGEX_YYYY, REGEX_MM, REGEX_DD), " ",
                 group(repeat(ANY_DIGIT, 2, 2)), ":",
@@ -59,9 +56,7 @@ public class AOC2018Day4 extends AOCDay<Integer> {
         return Integer.parseInt(id);
     }
 
-    @Override
-    protected Integer solvePartOne(List<String> input) {
-        var entries = parse(input);
+    private static Collection<Guard> parseGuards(List<Entry> entries) {
         var guards = new HashMap<Integer, Guard>();
 
         // Create guards and calculate their durations asleep and awake.
@@ -81,17 +76,32 @@ public class AOC2018Day4 extends AOCDay<Integer> {
                 assert !next.event.startsWith("wakes up") : "Guard already awake.";
             }
         }
+        return guards.values();
+    }
+
+    @Override
+    protected Integer solvePartOne(List<String> input) {
+        var entries = parseEntries(input);
+        var guards = parseGuards(entries);
 
         // Find the guard with the longest duration asleep.
-        var sleepyhead = guards.values().stream()
+        var sleepyhead = guards.stream()
                 .max(Guard.COMPARE_MINUTES_ASLEEP)
                 .orElseThrow(() -> new AssertionError("Missing sleepyhead guard."));
-        return sleepyhead.id * sleepyhead.getMostFrequentMinuteAsleep();
+        return sleepyhead.id * sleepyhead.getMostFrequentMinuteAsleep().orElseThrow(() -> new AssertionError("Guard did not fall asleep at least once."));
     }
 
     @Override
     protected Integer solvePartTwo(List<String> input) {
-        return 0;
+        var entries = parseEntries(input);
+        var guards = parseGuards(entries);
+        var sleepyhead = guards.stream()
+                .peek(LOGGER::debug)
+                .max(Comparator.comparing(guard -> guard.getMostFrequentMinuteAsleep()
+                        .map(guard.midnight::get)
+                        .orElse(0)))
+                .orElseThrow(() -> new AssertionError("Missing sleepyhead guard."));
+        return sleepyhead.id * sleepyhead.getMostFrequentMinuteAsleep().orElseThrow(() -> new AssertionError("Guard did not fall asleep at least once."));
     }
 
     private static class Guard {
@@ -127,11 +137,10 @@ public class AOC2018Day4 extends AOCDay<Integer> {
                     .orElse(0);
         }
 
-        public int getMostFrequentMinuteAsleep() {
+        public Optional<Integer> getMostFrequentMinuteAsleep() {
             return midnight.entrySet().stream()
                     .max(Map.Entry.comparingByValue())
-                    .map(Map.Entry::getKey)
-                    .orElseThrow(() -> new AssertionError("Guard did not fall asleep at least once."));
+                    .map(Map.Entry::getKey);
         }
     }
 
