@@ -17,6 +17,7 @@ import java.util.Objects;
 
 public abstract class AOCDay<R> {
     protected static final Logger LOGGER = (Logger) LogManager.getLogger(AOCDay.class);
+    private static final int RUNS = 1;
     private final List<String> input;
     private final int day, year;
 
@@ -43,11 +44,11 @@ public abstract class AOCDay<R> {
 
     public void solve() throws IOException {
         var partOneBenchmark = Benchmark.of(input, this::solvePartOne);
-        var partOneResults = partOneBenchmark.run(1);
+        var partOneResults = partOneBenchmark.run(RUNS);
         LOGGER.info("Advent of Code {}, day {}, part 1 -> {} (took {} ms)", year, day, partOneResults.left(), partOneResults.right());
 
         var partTwoBenchmark = Benchmark.of(input, this::solvePartTwo);
-        var partTwoResults = partTwoBenchmark.run(1);
+        var partTwoResults = partTwoBenchmark.run(RUNS);
         LOGGER.info("Advent of Code {}, day {}, part 2 -> {} (took {} ms)", year, day, partTwoResults.left(), partTwoResults.right());
 
         var path = Path.of("src/main/resources/output/%d/day%d.txt".formatted(year, day));
