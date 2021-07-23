@@ -53,7 +53,7 @@ public abstract class AOCDay<R> {
         var path = Path.of("src/main/resources/output/%d/day%d.txt".formatted(year, day));
         Files.deleteIfExists(path);
         Files.createFile(path);
-        Files.write(path, List.of(partTwoResults.left().toString(), partTwoResults.left().toString()));
+        Files.write(path, List.of(partOneResults.left().toString(), partTwoResults.left().toString()));
     }
 
     protected abstract R solvePartOne(List<String> input);
