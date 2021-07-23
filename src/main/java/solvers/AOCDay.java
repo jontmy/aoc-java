@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public abstract class AOCDay<R> {
-    private static final Logger LOGGER = (Logger) LogManager.getLogger(AOCDay.class);
+    protected static final Logger LOGGER = (Logger) LogManager.getLogger(AOCDay.class);
     private final List<String> input;
     private final int day, year;
 
