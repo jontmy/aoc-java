@@ -20,7 +20,7 @@ public abstract class AOCDay<R> {
     private final List<String> input;
     private final int day, year;
 
-    protected AOCDay(int day, int year) throws IOException, URISyntaxException {
+    public AOCDay(int day, int year) throws IOException, URISyntaxException {
         this.day = day;
         this.year = year;
 
