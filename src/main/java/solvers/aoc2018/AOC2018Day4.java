@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static utils.DateUtils.*;
@@ -42,15 +44,95 @@ public class AOC2018Day4 extends AOCDay<Integer> {
         return Entry.of(year, month, day, hour, minute, event);
     }
 
+    private static int extractID(Entry entry) {
+        assert entry.event.endsWith(" begins shift") : "Entry '%s' is not from a shift takeover.".formatted(entry.event);
+        var regex = join("Guard #",
+                group(min(ANY_DIGIT, 1)),
+                " begins shift"
+        );
+        var id = Pattern.compile(regex)
+                .matcher(entry.event)
+                .results()
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("ID extraction failed - missing result."))
+                .group(1);
+        return Integer.parseInt(id);
+    }
+
     @Override
     protected Integer solvePartOne(List<String> input) {
-        parse(input).forEach(LOGGER::debug);
-        return 0;
+        var entries = parse(input);
+        var guards = new HashMap<Integer, Guard>();
+
+        // Create guards and calculate their durations asleep and awake.
+        Guard guard = null;
+        for (int i = 0, id = -1; i < entries.size() - 1; i++) {
+            var current = entries.get(i);
+            var next = entries.get(i + 1);
+            if (current.event.endsWith("begins shift")) {
+                id = extractID(current);
+                guard = guards.computeIfAbsent(id, Guard::new);
+            } else if (current.event.startsWith("falls asleep")) {
+                assert id != -1 : "Missing guard ID.";
+                assert !next.event.startsWith("falls asleep") : "Guard already asleep.";
+                guard.asleep(current.dateTime, next.dateTime);
+            } else if (current.event.startsWith("wakes up")) {
+                assert id != -1 : "Missing guard ID.";
+                assert !next.event.startsWith("wakes up") : "Guard already awake.";
+            }
+        }
+
+        // Find the guard with the longest duration asleep.
+        var sleepyhead = guards.values().stream()
+                .max(Guard.COMPARE_MINUTES_ASLEEP)
+                .orElseThrow(() -> new AssertionError("Missing sleepyhead guard."));
+        return sleepyhead.id * sleepyhead.getMostFrequentMinuteAsleep();
     }
 
     @Override
     protected Integer solvePartTwo(List<String> input) {
         return 0;
+    }
+
+    private static class Guard {
+        private static final Comparator<Guard> COMPARE_MINUTES_ASLEEP = Comparator.comparing(Guard::getMinutesAsleep);
+
+        private final HashMap<Integer, Integer> midnight = new HashMap<>();
+        private final int id;
+
+        public Guard(int id) {
+            this.id = id;
+        }
+
+        public void asleep(LocalDateTime start, LocalDateTime end) {
+            int from, to;
+            switch (start.getHour()) {
+                case 23 -> from = 0;
+                case 0 -> from = start.getMinute();
+                default -> throw new AssertionError("Starting hour before 2300h");
+            }
+            switch (end.getHour()) {
+                case 0 -> to = end.getMinute();
+                case 1 -> to = 59;
+                default -> throw new AssertionError("Ending hour after 0159h");
+            }
+            for (int i = from; i < to; i++) {
+                midnight.merge(i, 1, Integer::sum);
+            }
+        }
+
+        public int getMinutesAsleep() {
+            return midnight.values().stream()
+                    .reduce(Integer::sum)
+                    .orElse(0);
+        }
+
+        public int getMostFrequentMinuteAsleep() {
+            return midnight.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElseThrow(() -> new AssertionError("Guard did not fall asleep at least once."));
+        }
     }
 
     private record Entry(LocalDateTime dateTime, String event) implements Comparable<Entry> {
