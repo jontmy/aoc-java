@@ -13,7 +13,7 @@ import java.util.stream.IntStream;
 
 import static utils.RegexUtils.*;
 
-public class AOC2018Day6 extends AOCDay<Integer> {
+public class AOC2018Day6 extends AOCDay<Long> {
     public AOC2018Day6() throws IOException, URISyntaxException {
         super(6, 2018);
     }
@@ -46,15 +46,40 @@ public class AOC2018Day6 extends AOCDay<Integer> {
     }
 
     @Override
-    protected Integer solvePartOne(List<String> input) {
+    protected Long solvePartOne(List<String> input) {
         var destinations = parse(input);
-        var map = new CoordinateMap(destinations);
-        return map.areasByID().get(map.largestAreaID()).intValue();
+        var cm = new CoordinateMap(destinations);
+
+        // Plots the coordinate map of the IDs of the closest destination from each coordinate, or -2 if tied,
+        // or -3 if the coordinate lies in an infinite area.
+        var copy = new int[cm.height][cm.length];
+        for (int i = 0; i < cm.height; i++) {
+            for (int j = 0; j < cm.length; j++) {
+                var closestDestination = cm.closestDestination(j, i);
+                cm.map[i][j] = closestDestination.map(Destination::id).orElse(-2);
+                copy[i][j] = cm.map[i][j];
+            }
+        }
+        // Check for coordinates in infinite areas.
+        for (int i = 0; i < cm.height; i++) {
+            for (int j = 0; j < cm.length; j++) {
+                if (cm.map[i][j] < 0) continue;
+                if (!CoordinateMap.finite(j, i, copy)) cm.map[i][j] = -3;
+            }
+        }
+        return cm.areasByID().get(cm.largestAreaID());
     }
 
     @Override
-    protected Integer solvePartTwo(List<String> input) {
-        return 0;
+    protected Long solvePartTwo(List<String> input) {
+        var destinations = parse(input);
+        var cm = new CoordinateMap(destinations);
+        return IntStream.range(0, cm.height)
+                .mapToObj(y -> IntStream.range(0, cm.length).mapToObj(x -> Pair.of(x, y)))
+                .flatMap(Function.identity())
+                .map(xy -> cm.totalManhattan(xy.left(), xy.right()))
+                .filter(totalDistance -> totalDistance < 10000)
+                .count();
     }
 
     private static class CoordinateMap {
@@ -73,7 +98,6 @@ public class AOC2018Day6 extends AOCDay<Integer> {
                     .max(Comparator.naturalOrder())
                     .orElseThrow() + 1;
             this.map = new int[height][length];
-            plot();
         }
 
         // Returns true if the coordinate on the map lies in a finite area, or false if it lies in an infinite area.
@@ -112,24 +136,12 @@ public class AOC2018Day6 extends AOCDay<Integer> {
             return Optional.of(destination.get(0));
         }
 
-        // Plots the coordinate map of the IDs of the closest destination from each coordinate, or -2 if tied,
-        // or -3 if the coordinate lies in an infinite area.
-        private void plot() {
-            var copy = new int[height][length];
-            for (int i = 0; i < height; i++) {
-                for (int j = 0; j < length; j++) {
-                    var closestDestination = closestDestination(j, i);
-                    map[i][j] = closestDestination.map(Destination::id).orElse(-2);
-                    copy[i][j] = map[i][j];
-                }
-            }
-            // Check for coordinates in infinite areas.
-            for (int i = 0; i < height; i++) {
-                for (int j = 0; j < length; j++) {
-                    if (map[i][j] < 0) continue;
-                    if (!finite(j, i, copy)) map[i][j] = -3;
-                }
-            }
+        // Returns the total Manhattan distance from a coordinate to every destination.
+        private int totalManhattan(int x, int y) {
+            return destinations.stream()
+                    .map(dest -> dest.manhattan(x, y))
+                    .reduce(Integer::sum)
+                    .orElse(0);
         }
 
         private Map<Integer, Long> areasByID() {
