@@ -13,9 +13,25 @@ import java.util.stream.Collectors;
 import static utils.RegexUtils.*;
 
 public class AOC2018Day7 extends AOCDay<String> {
+    private final Map<Character, Set<Character>> inward, outward;
+    private final List<Character> entry;
 
     public AOC2018Day7() throws IOException, URISyntaxException {
         super(7, 2018);
+        this.outward = parse(input);
+        this.inward = new HashMap<>();
+        outward.forEach((v, values) -> {
+            inward.putIfAbsent(v, new TreeSet<>());
+            for (Character k : values) { // values become keys due to inversion
+                inward.putIfAbsent(k, new TreeSet<>());
+                inward.get(k).add(v);
+            }
+        });
+        // inward.forEach((k, v) -> LOGGER.debug("{} <- {}", k, v));
+        this.entry = inward.entrySet().stream() // vertices with an in-degree of 0.
+                .filter(e -> e.getValue().isEmpty())
+                .map(Map.Entry::getKey)
+                .toList();
     }
 
     // Creates a directed acyclic graph of steps (edges input -> outputs)
@@ -51,25 +67,7 @@ public class AOC2018Day7 extends AOCDay<String> {
 
     @Override
     protected String solvePartOne(List<String> input) {
-        var outward = parse(input);
-
-        // Find the vertices with an in-degree of 0.
-        var inward = new HashMap<Character, Set<Character>>();
-        outward.forEach((v, values) -> {
-            inward.putIfAbsent(v, new TreeSet<>());
-            for (Character k : values) { // values become keys due to inversion
-                inward.putIfAbsent(k, new TreeSet<>());
-                inward.get(k).add(v);
-            }
-        });
-        // inward.forEach((k, v) -> LOGGER.debug("{} <- {}", k, v));
-        var entry = inward.entrySet().stream()
-                .filter(e -> e.getValue().isEmpty())
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toCollection(PriorityQueue::new));
-
-        // Depth-first search until all vertices have an out-degree of 0.
-        return build(new LinkedHashSet<>(), entry, outward, inward).stream()
+        return build(new LinkedHashSet<>(), new PriorityQueue<>(entry), outward, inward).stream()
                 .reduce(new StringBuilder(), StringBuilder::append, StringBuilder::append)
                 .toString();
     }
