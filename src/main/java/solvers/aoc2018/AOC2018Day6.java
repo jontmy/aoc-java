@@ -39,7 +39,7 @@ public class AOC2018Day6 extends AOCDay<Integer> {
                 .map(Destination::y)
                 .min(Comparator.naturalOrder())
                 .orElseThrow();
-        var minXY = Destination.ofCoordinates(minX - 1, minY - 1);
+        var minXY = Destination.ofCoordinates(minX, minY);
         return IntStream.range(0, unadjusted.size())
                 .mapToObj(id -> unadjusted.get(id).relative(minXY, id + 1))
                 .toList();
@@ -67,11 +67,11 @@ public class AOC2018Day6 extends AOCDay<Integer> {
             this.length = destinations.stream()
                     .map(Destination::x)
                     .max(Comparator.naturalOrder())
-                    .orElseThrow() + 2;
+                    .orElseThrow() + 1;
             this.height = destinations.stream()
                     .map(Destination::y)
                     .max(Comparator.naturalOrder())
-                    .orElseThrow() + 2;
+                    .orElseThrow() + 1;
             this.map = new int[height][length];
             plot();
         }
