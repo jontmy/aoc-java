@@ -17,8 +17,8 @@ import java.util.Objects;
 
 public abstract class AOCDay<R> {
     protected static final Logger LOGGER = (Logger) LogManager.getLogger(AOCDay.class);
+    protected final List<String> input;
     private static final int RUNS = 1;
-    private final List<String> input;
     private final int day, year;
 
     public AOCDay(int day, int year) throws IOException, URISyntaxException {
