@@ -158,51 +158,6 @@ public class AOC2018Day6 extends AOCDay<Long> {
                     .map(Map.Entry::getKey)
                     .orElseThrow();
         }
-
-        @Override
-        public String toString() {
-            var dests = new int[height][length];
-            for (Destination destination : destinations) {
-                LOGGER.warn(destination);
-                dests[destination.y()][destination.x()] = destination.id;
-            }
-            var sb = new StringBuilder("\n");
-            for (int[] row : dests) {
-                for (int id : row) {
-                    if (id < 1) sb.append(".");
-                    else sb.append("%s".formatted(id));
-                }
-                sb.append("\n");
-            }
-            sb.append("\n");
-            for (int i = 0; i < height; i++) {
-                for (int j = 0; j < length; j++) {
-                    var closest = closestDestination(j, i);
-                    if (closest.isEmpty()) sb.append(".");
-                    else sb.append("%1d".formatted(closest.get().manhattan(j, i)));
-                }
-                sb.append("\n");
-            }
-            sb.append("\n");
-            for (int[] row : map) {
-                for (int id : row) {
-                    if (id == -2) sb.append(".");
-                    else if (id < 1) sb.append("*");
-                    else sb.append("%s".formatted(id));
-                }
-                sb.append("\n");
-            }
-            sb.append("\n");
-            for (int[] row : map) {
-                for (int id : row) {
-                    if (id == -2) sb.append(".");
-                    else if (id < 1) sb.append(" ");
-                    else sb.append("%s".formatted(id));
-                }
-                sb.append("\n");
-            }
-            return sb.toString();
-        }
     }
 
     private record Destination(Pair<Integer, Integer> coordinates, int id) {
