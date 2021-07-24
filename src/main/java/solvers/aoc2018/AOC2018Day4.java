@@ -96,7 +96,6 @@ public class AOC2018Day4 extends AOCDay<Integer> {
         var entries = parseEntries(input);
         var guards = parseGuards(entries);
         var sleepyhead = guards.stream()
-                .peek(LOGGER::debug)
                 .max(Comparator.comparing(guard -> guard.getMostFrequentMinuteAsleep()
                         .map(guard.midnight::get)
                         .orElse(0)))
