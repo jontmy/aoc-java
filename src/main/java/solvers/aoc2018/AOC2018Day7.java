@@ -6,12 +6,13 @@ import utils.Pair;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import static utils.RegexUtils.*;
 
+@SuppressWarnings("DuplicatedCode")
 public class AOC2018Day7 extends AOCDay<String> {
     private final Map<Character, Set<Character>> inward, outward;
     private final List<Character> entry;
@@ -27,7 +28,6 @@ public class AOC2018Day7 extends AOCDay<String> {
                 inward.get(k).add(v);
             }
         });
-        // inward.forEach((k, v) -> LOGGER.debug("{} <- {}", k, v));
         this.entry = inward.entrySet().stream() // vertices with an in-degree of 0.
                 .filter(e -> e.getValue().isEmpty())
                 .map(Map.Entry::getKey)
@@ -51,7 +51,7 @@ public class AOC2018Day7 extends AOCDay<String> {
     // Depth-first search implementation of the puzzle requirements:
     // Determine the order in which the steps should be completed.
     // If more than one step is ready, choose the step which is first alphabetically.
-    private Set<Character> build(Set<Character> built, Queue<Character> options, Map<Character, Set<Character>> outward, Map<Character, Set<Character>> inward) {
+    private Set<Character> buildSequential(Set<Character> built, Queue<Character> options) {
         while (!options.isEmpty()) {
             // Build the first step that comes first in alphabetical order.
             var building = options.remove();
@@ -67,13 +67,111 @@ public class AOC2018Day7 extends AOCDay<String> {
 
     @Override
     protected String solvePartOne(List<String> input) {
-        return build(new LinkedHashSet<>(), new PriorityQueue<>(entry), outward, inward).stream()
+        return buildSequential(new LinkedHashSet<>(), new PriorityQueue<>(entry)).stream()
                 .reduce(new StringBuilder(), StringBuilder::append, StringBuilder::append)
                 .toString();
     }
 
+    private int buildParallel(Character endpoint) {
+        var built = new LinkedHashMap<Character, Integer>();
+        var options = new PriorityQueue<>(entry);
+        var pool = new WorkerPool();
+
+        while (!options.isEmpty()) {
+            assert pool.availableWorkers() > 0 : "No available workers.";
+            assert pool.currentSecond() < 10000 : "Timeout.";
+            var successfullyQueued = new ArrayList<Character>();
+            var unsuccessfullyQueued = new ArrayList<Character>();
+
+            // Delegate a step that comes first in alphabetical order to an available worker.
+            while (pool.availableWorkers() > 0 && !options.isEmpty()) {
+                var option = options.remove();
+                if (optionFulfilsAllPrerequisites(option, built, pool.currentSecond())) {
+                    successfullyQueued.add(option);
+                    built.put(option, pool.delegate(option));
+                } else {
+                    unsuccessfullyQueued.add(option);
+                }
+            }
+            options.addAll(unsuccessfullyQueued);
+
+            // Simulate seconds passing until another worker is available.
+            pool.advanceToNextCompletion();
+
+            // Add the next options available that have fulfilled all pre-requisites to be added to the next round.
+            successfullyQueued.stream()
+                    .map(justBuilt -> outward.getOrDefault(justBuilt, Collections.emptySet()))
+                    .flatMap(Set::stream)
+                    .filter(Predicate.not(options::contains))
+                    .forEach(options::add);
+        }
+        pool.advanceToFullCompletion();
+        assert built.keySet().stream()
+                .reduce(new StringBuilder(), StringBuilder::append, StringBuilder::append)
+                .toString()
+                .endsWith(String.valueOf(endpoint)) : "Failed to complete correctly.";
+        return pool.currentSecond();
+    }
+
+    private boolean optionFulfilsAllPrerequisites(Character option, Map<Character, Integer> built, int currentSecond) {
+        var prerequisites = inward.get(option);
+        if (!built.keySet().containsAll(prerequisites)) return false;
+        for (Character prerequisite : prerequisites) {
+            var completion = built.get(prerequisite);
+            if (completion > currentSecond) return false;
+        }
+        return true;
+    }
+
     @Override
     protected String solvePartTwo(List<String> input) {
-        return "";
+        var endpoints = inward.keySet().stream()
+                .filter(c -> outward.getOrDefault(c, Collections.emptySet()).size() == 0)
+                .toList();
+        assert endpoints.size() == 1 : "More than 1 endpoint.";
+        var endpoint = endpoints.get(0);
+        return String.valueOf(buildParallel(endpoint));
+    }
+
+    private static final class WorkerPool {
+        private static final int CAPACITY = 5;
+        private final Set<Integer> workers;
+        private int second;
+
+        private WorkerPool() {
+            this.workers = new HashSet<>(CAPACITY);
+            this.second = 0;
+        }
+
+        private static int secondsRequired(char c) {
+            assert ((int) c) >= 65 && ((int) c) <= 90;
+            return 60 + ((int) c) - 64;
+        }
+
+        private void advanceToNextCompletion() {
+            second = workers.stream().min(Comparator.naturalOrder()).orElse(currentSecond());
+            workers.removeIf(worker -> worker <= second);
+            assert availableWorkers() > 0 : "All workers are still unavailable.";
+        }
+
+        private void advanceToFullCompletion() {
+            second = workers.stream().max(Comparator.naturalOrder()).orElse(currentSecond());
+            workers.clear();
+        }
+
+        private int delegate(char task) {
+            assert availableWorkers() > 0 : "No available workers.";
+            var completion = second + secondsRequired(task);
+            workers.add(completion);
+            return completion;
+        }
+
+        private int availableWorkers() {
+            return CAPACITY - workers.size();
+        }
+
+        public int currentSecond() {
+            return second;
+        }
     }
 }
