@@ -1,12 +1,13 @@
 package solvers.aoc2018;
 
 import solvers.AOCDay;
+import utils.Pair;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class AOC2018Day8 extends AOCDay<Integer> {
     private final List<Integer> license;
@@ -19,7 +20,7 @@ public class AOC2018Day8 extends AOCDay<Integer> {
                 .toList();
     }
 
-    private int findEndPoint(int startPoint, AtomicInteger checksum) {
+    private int findEndPoint(int startPoint, List<Node> nodes) {
         var nChildren = license.get(startPoint);
         assert nChildren >= 0 : "Zero or more child nodes must be specified.";
         var nMetadata = license.get(startPoint + 1);
@@ -28,35 +29,37 @@ public class AOC2018Day8 extends AOCDay<Integer> {
 
         // Base case: 0 child nodes.
         if (nChildren == 0) {
-            var metadata = license.subList(endPoint, endPoint + nMetadata);
-            var component = metadata.stream()
-                    .reduce(Integer::sum)
-                    .orElseThrow(() -> new AssertionError("Missing checksum component."));
-            checksum.addAndGet(component);
+            nodes.add(Node.of(startPoint, endPoint, endPoint, endPoint + nMetadata));
             return endPoint + nMetadata;
         }
 
         // Recursive case: 1 or more child nodes.
         for (int i = 0; i < nChildren; i++) {
-            endPoint = findEndPoint(endPoint, checksum);
+            endPoint = findEndPoint(endPoint, nodes);
         }
-        var metadata = license.subList(endPoint, endPoint + nMetadata);
-        var component = metadata.stream()
-                .reduce(Integer::sum)
-                .orElseThrow(() -> new AssertionError("Missing checksum component."));
-        checksum.addAndGet(component);
+        nodes.add(Node.of(startPoint, startPoint + 2, endPoint, endPoint + nMetadata));
         return endPoint + nMetadata;
     }
 
     @Override
     protected Integer solvePartOne(List<String> input) {
-        var checksum = new AtomicInteger(0);
-        findEndPoint(0, checksum);
-        return checksum.get();
+        var nodes = new ArrayList<Node>();
+        findEndPoint(0, nodes);
+        return nodes.stream()
+                .map(node -> license.subList(node.metadataStart(), node.endPoint()))
+                .flatMap(List::stream)
+                .reduce(Integer::sum)
+                .orElseThrow(() -> new AssertionError("Missing checksum."));
     }
 
     @Override
     protected Integer solvePartTwo(List<String> input) {
         return 0;
+    }
+
+    private record Node(int startPoint, int childStart, int metadataStart, int endPoint) {
+        private static Node of(int startPoint, int childStart, int metadataStart, int endPoint) {
+            return new Node(startPoint, endPoint, metadataStart, endPoint);
+        }
     }
 }
