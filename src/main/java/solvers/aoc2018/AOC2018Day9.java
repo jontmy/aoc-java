@@ -1,22 +1,16 @@
 package solvers.aoc2018;
 
 import solvers.AOCDay;
-import utils.Pair;
-import utils.RegexUtils;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static utils.RegexUtils.*;
 
-public class AOC2018Day9 extends AOCDay<Integer> {
+public class AOC2018Day9 extends AOCDay<Long> {
     private final int players, lastMarble;
 
     public AOC2018Day9() throws IOException, URISyntaxException {
@@ -37,269 +31,126 @@ public class AOC2018Day9 extends AOCDay<Integer> {
     }
 
     @Override
-    protected Integer solvePartOne(List<String> input) {
+    protected Long solvePartOne(List<String> input) {
         var game = new MarbleGame(players, lastMarble);
         game.simulateGame();
-        return Arrays.stream(game.scores)
-                .max()
-                .orElseThrow();
+        return game.winner();
     }
 
     @Override
-    protected Integer solvePartTwo(List<String> input) {
-        return 0;
+    protected Long solvePartTwo(List<String> input) {
+        var game = new MarbleGame(players, lastMarble * 100);
+        game.simulateGame();
+        return game.winner();
     }
 
     private static class MarbleGame {
-        private final CircularArrayList<Integer> circle;
         private final int players, lastMarble;
-        private final int[] scores;
+        private final long[] scores;
+        private Marble cursor;
         private int currentPlayer, currentMarble;
 
         private MarbleGame(int players, int lastMarble) {
-            this.circle = new CircularArrayList<>();
+            assert players > 2;
+            assert lastMarble > 2;
+            var zero = new Marble(0, null, null);
+            var two = new Marble(2, zero, null);
+            var one = new Marble(1, two, zero);
+            two.setNext(one);
+            zero.setPrevious(one);
+            zero.setNext(two);
+            this.cursor = two;
             this.players = players;
             this.lastMarble = lastMarble;
-            this.currentPlayer = 0;
-            this.currentMarble = 0;
-            this.scores = new int[players];
-            addMarble(currentMarble++);
+            this.currentPlayer = 3;
+            this.currentMarble = 3;
+            this.scores = new long[players];
         }
 
         private void simulateTurn() {
             if (currentMarble % 23 == 0) {
-                scores[currentPlayer] += currentMarble + circle.remove(-7);
+                cursor = cursor.rotate(-7);
+                scores[currentPlayer] += currentMarble + cursor.remove().getID();
+                cursor = cursor.getNext();
             } else {
-                addMarble(currentMarble);
+                cursor = cursor.rotate(+1);
+                cursor = cursor.add(currentMarble, cursor, cursor.getNext());
             }
+            currentMarble++;
+            currentPlayer = ++currentPlayer % players;
         }
 
         private void simulateGame() {
-            for (int i = 1; i <= lastMarble; i++) {
-                simulateTurn();
-                currentMarble++;
-                currentPlayer = ++currentPlayer % players;
-                // LOGGER.debug("[{}] {}", currentPlayer, circle);
-            }
+            while (currentMarble <= lastMarble) simulateTurn();
         }
 
-        private void addMarble(int marble) {
-            assert marble <= lastMarble;
-            if (circle.size() == 0) {
-                circle.add(marble);
-                circle.rotate(0, false);
-            } else {
-                circle.add(1, marble);
-            }
-        }
-
-        public int[] scores() {
-            return scores;
+        public long winner() {
+            return Arrays.stream(scores)
+                    .max()
+                    .orElseThrow();
         }
     }
 
-    @SuppressWarnings("DuplicatedCode")
-    private static class CircularArrayList<T> {
-        private final List<T> backing;
-        private int pointer;
+    private static class Marble {
+        private final int id;
+        private Marble previous, next;
 
-        private CircularArrayList() {
-            this.backing = new ArrayList<>();
-            this.pointer = -1;
+        private Marble(int id, Marble previous, Marble next) {
+            this.id = id;
+            this.previous = previous;
+            this.next = next;
         }
 
-        private T get() {
-            assert pointer < size() : "pointer is not smaller than the size of the list";
-            assert !backing.isEmpty() || pointer == -1 : "list is empty, but pointer is not -1";
-            assert !backing.isEmpty() : "get() called on empty list";
-            return backing.get(pointer);
-        }
-
-        private T get(int relativeIndex) {
-            assert pointer < size() : "pointer is not smaller than the size of the list";
-            assert !backing.isEmpty() || pointer == -1 : "list is empty, but pointer is not -1";
-            assert !backing.isEmpty() : "get() called on empty list";
-            int index = (pointer + relativeIndex) % size();
-            while (index < 0) index += size();
-            return backing.get(index);
-        }
-
-        private void add(T element) {
-            assert pointer < size() : "pointer is not smaller than the size of the list";
-            assert !backing.isEmpty() || pointer == -1 : "list is empty, but pointer is not -1";
-            backing.add(++pointer, element);
-            assert pointer < size() : "pointer is not smaller than the size of the list";
-        }
-
-        private void add(int relativeIndex, T element) {
-            assert pointer < size() : "pointer is not smaller than the size of the list";
-            assert !backing.isEmpty() || pointer == -1 : "list is empty, but pointer is not -1";
-            int index = ((pointer + relativeIndex) % size()) + 1;
-            while (index < 0) index += size();
-            backing.add(index, element);
-            pointer = index;
-            assert pointer < size() : "pointer is not smaller than the size of the list";
-        }
-
-        private T remove() {
-            assert pointer < size() : "pointer is not smaller than the size of the list";
-            assert !backing.isEmpty() || pointer == -1 : "list is empty, but pointer is not -1";
-            assert !backing.isEmpty() : "remove() called on empty list";
-            var removed = backing.remove(pointer);
-            if (backing.isEmpty()) pointer = -1;
-            else pointer = (pointer - 1) % size();
-            return removed;
-        }
-
-        private T remove(int relativeIndex) {
-            assert pointer < size() : "pointer is not smaller than the size of the list";
-            assert !backing.isEmpty() || pointer == -1 : "list is empty, but pointer is not -1";
-            assert !backing.isEmpty() : "remove() called on empty list";
-
-            rotate(relativeIndex, true);
-            var removed = remove();
-            if (backing.isEmpty()) pointer = -1;
-            else rotate(1, true);
-            return removed;
-        }
-
-        private void rotate(int index, boolean isRelative) {
-            assert !backing.isEmpty() || pointer == -1 : "list is empty, but pointer is not -1";
-            assert !backing.isEmpty() : "rotate() called on empty list";
-            if (isRelative) {
-                pointer = (pointer + index) % size();
-                while (pointer < 0) pointer += size();
+        private Marble rotate(int delta) {
+            if (delta == 0) return this;
+            else if (delta < 0) {
+                var cursor = this;
+                for (int i = 0; i > delta; i--) {
+                    cursor = cursor.getPrevious();
+                }
+                return cursor;
             } else {
-                if (index < 0 || index >= size()) throw new IllegalArgumentException(String.valueOf(index));
-                pointer = index;
+                var cursor = this;
+                for (int i = 0; i < delta; i++) {
+                    cursor = cursor.getNext();
+                }
+                return cursor;
             }
         }
 
-        private void clear() {
-            backing.clear();
-            pointer = -1;
+        private Marble add(int id, Marble previous, Marble next) {
+            var added = new Marble(id, previous, next);
+            previous.setNext(added);
+            next.setPrevious(added);
+            return added;
         }
 
-        private int size() {
-            return backing.size();
+        private Marble remove() {
+            var previous = this.getPrevious();
+            var next = this.getNext();
+            previous.setNext(next);
+            next.setPrevious(previous);
+            return this;
         }
 
-        @Override
-        public String toString() {
-            if (backing.isEmpty()) return "[]";
-            var sb = new StringBuilder("[");
-            backing.subList(0, pointer)
-                    .forEach(e -> sb.append(e).append(", "));
-            sb.append("*(").append(backing.get(pointer)).append(")*, ");
-            backing.subList(pointer + 1, size())
-                    .forEach(e -> sb.append(e).append(", "));
-            if (sb.charAt(sb.length() - 2) == ',' && sb.charAt(sb.length() - 1) == ' ') {
-                sb.deleteCharAt(sb.length() - 2).deleteCharAt(sb.length() - 1);
-            }
-            sb.append("]");
-            return sb.toString();
-        }
-    }
-
-    public static void main(String[] args) {
-        var circle = new CircularArrayList<Integer>();
-        assert circle.size() == 0;
-        assert circle.pointer == -1;
-
-        circle.add(0);
-        LOGGER.debug(circle);
-        assert circle.size() == 1;
-        assert circle.pointer == 0;
-
-        circle.add(1);
-        LOGGER.debug(circle);
-        assert circle.size() == 2;
-        assert circle.pointer == 1;
-
-        circle.add(0, 2);
-        LOGGER.debug(circle);
-        assert circle.size() == 3;
-        assert circle.pointer == 2;
-
-        circle.add(1, 3);
-        LOGGER.debug(circle);
-        assert circle.size() == 4;
-        assert circle.pointer == 1;
-
-        circle.add(-1, 4);
-        LOGGER.debug(circle);
-        assert circle.size() == 5;
-        assert circle.pointer == 1;
-
-        circle.add(-3, 5);
-        LOGGER.debug(circle);
-        assert circle.size() == 6;
-        assert circle.pointer == 4;
-
-        String elements;
-        elements = IntStream.range(0, circle.size() * 2)
-                .map(circle::get)
-                .mapToObj(String::valueOf)
-                .collect(Collectors.joining(", "));
-        LOGGER.debug(elements);
-        elements = IntStream.range(0, circle.size() * 2)
-                .map(i -> circle.get(i * -1))
-                .mapToObj(String::valueOf)
-                .collect(Collectors.joining(", "));
-        LOGGER.debug(elements);
-
-        int element = circle.get();
-        for (int i = 1; i < circle.size(); i++) {
-            assert element == circle.get();
-            element = circle.get();
-        }
-        LOGGER.info("Testing clockwise rotate()");
-        LOGGER.debug(circle);
-        for (int i = 0; i < circle.size() * 2; i++) {
-            circle.rotate(2, true);
-            LOGGER.debug(circle);
-        }
-        LOGGER.info("Testing counter-clockwise rotate()");
-        LOGGER.debug(circle);
-        for (int i = 0; i < circle.size() * 2; i++) {
-            circle.rotate(-2, true);
-            LOGGER.debug(circle);
+        private Marble getPrevious() {
+            return previous;
         }
 
-        LOGGER.info("Testing in-place remove()");
-        LOGGER.debug(circle);
-        while (circle.size() > 0) {
-            circle.remove();
-            LOGGER.debug(circle);
+        private void setPrevious(Marble previous) {
+            this.previous = previous;
         }
 
-        for (int i = 1; i < 20; i++) {
-            circle.add(i);
+        private Marble getNext() {
+            return next;
         }
-        LOGGER.info("Testing absolute rotate() with 19 elements");
-        circle.rotate(9, false);
-        LOGGER.debug(circle);
 
-        LOGGER.info("Testing relative clockwise remove()");
-        LOGGER.debug(circle);
-        int delta = -1;
-        while (circle.size() > 0) {
-            circle.remove(++delta);
-            LOGGER.debug("relative +" + delta + " -> " + circle);
+        private void setNext(Marble next) {
+            this.next = next;
         }
-        LOGGER.debug(circle);
 
-
-        LOGGER.info("Testing relative counter-clockwise remove()");
-        for (int i = 1; i < 20; i++) {
-            circle.add(i);
+        public int getID() {
+            return id;
         }
-        LOGGER.debug(circle);
-        delta = 1;
-        while (circle.size() > 0) {
-            circle.remove(--delta);
-            LOGGER.debug("relative " + delta + " -> " + circle);
-        }
-        LOGGER.debug(circle);
     }
 }
