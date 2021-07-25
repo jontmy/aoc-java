@@ -19,13 +19,6 @@ public class AOC2018Day8 extends AOCDay<Integer> {
                 .toList();
     }
 
-    @Override
-    protected Integer solvePartOne(List<String> input) {
-        var checksum = new AtomicInteger(0);
-        findEndPoint(0, checksum);
-        return checksum.get();
-    }
-
     private int findEndPoint(int startPoint, AtomicInteger checksum) {
         var nChildren = license.get(startPoint);
         assert nChildren >= 0 : "Zero or more child nodes must be specified.";
@@ -38,7 +31,7 @@ public class AOC2018Day8 extends AOCDay<Integer> {
             var metadata = license.subList(endPoint, endPoint + nMetadata);
             var component = metadata.stream()
                     .reduce(Integer::sum)
-                    .orElseThrow(() -> new AssertionError("Missing checksum."));
+                    .orElseThrow(() -> new AssertionError("Missing checksum component."));
             checksum.addAndGet(component);
             return endPoint + nMetadata;
         }
@@ -50,9 +43,16 @@ public class AOC2018Day8 extends AOCDay<Integer> {
         var metadata = license.subList(endPoint, endPoint + nMetadata);
         var component = metadata.stream()
                 .reduce(Integer::sum)
-                .orElseThrow(() -> new AssertionError("Missing checksum."));
+                .orElseThrow(() -> new AssertionError("Missing checksum component."));
         checksum.addAndGet(component);
         return endPoint + nMetadata;
+    }
+
+    @Override
+    protected Integer solvePartOne(List<String> input) {
+        var checksum = new AtomicInteger(0);
+        findEndPoint(0, checksum);
+        return checksum.get();
     }
 
     @Override
