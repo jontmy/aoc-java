@@ -16,7 +16,8 @@ public class Main {
         new AOC2018Day8().solve();
         new AOC2018Day9().solve();
         new AOC2018Day10().solve();
-        */
         new AOC2018Day11().solve();
+        */
+        new AOC2018Day12().solve();
     }
 }
