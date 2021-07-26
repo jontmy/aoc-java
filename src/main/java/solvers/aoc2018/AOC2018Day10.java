@@ -6,8 +6,10 @@ import utils.RegexUtils;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static utils.RegexUtils.*;
 
@@ -24,8 +26,19 @@ public class AOC2018Day10 extends AOCDay<String> {
     }
 
     private static List<LightVector> parse(List<String> input) {
-        return input.stream()
+        var unadjusted = input.stream()
                 .map(AOC2018Day10::parse)
+                .toList();
+        var xOffset = unadjusted.stream()
+                .map(LightVector::x)
+                .min(Comparator.naturalOrder())
+                .orElseThrow();
+        var yOffset = unadjusted.stream()
+                .map(LightVector::y)
+                .min(Comparator.naturalOrder())
+                .orElseThrow();
+        return unadjusted.stream()
+                .map(vector -> LightVector.of(vector.x() - xOffset, vector.y() - yOffset, vector.dx(), vector.dy()))
                 .toList();
     }
 
@@ -44,6 +57,7 @@ public class AOC2018Day10 extends AOCDay<String> {
 
     @Override
     protected String solvePartOne(List<String> input) {
+        vectors.forEach(LOGGER::debug);
         return "";
     }
 
