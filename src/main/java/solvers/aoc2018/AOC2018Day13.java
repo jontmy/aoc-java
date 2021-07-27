@@ -36,18 +36,12 @@ public class AOC2018Day13 extends AOCDay<String> {
     @Override
     protected String solvePartTwo(List<String> input) {
         var system = CartTrackSystem.from(initial);
-        //for (int i = 0; i < 20; i++) {
-        //    system.tickRemovingCollidedCarts();
-        //}
-
         while (system.carts().size() > 1) {
             system.tickRemovingCollidedCarts();
         }
         assert system.carts().size() == 1;
         var cart = system.carts().get(0);
         return cart.x() + "," + cart.y();
-
-        // return "";
     }
 
     private record CartTrackSystem(int width, int height, char[][] tracks, List<Cart> carts) {
@@ -57,11 +51,7 @@ public class AOC2018Day13 extends AOCDay<String> {
             this.carts = carts.stream()
                     .map(Cart::from)
                     .collect(Collectors.toList());
-            var trx = new char[width][height];
-            for (int x = 0; x < width; x++) {
-                System.arraycopy(tracks[x], 0, trx[x], 0, height);
-            }
-            this.tracks = trx;
+            this.tracks = tracks;
         }
 
         private static CartTrackSystem of(int width, int height, char[][] tracks, List<Cart> carts) {
@@ -149,26 +139,13 @@ public class AOC2018Day13 extends AOCDay<String> {
         // Carts are removed instantaneously after they collide.
         private void tickRemovingCollidedCarts() {
             Collections.sort(carts); // order from top-down, then left-to-right
-            var simulation = CartTrackSystem.from(this);
-            var collisions = new HashSet<Integer>();
 
             // Run simulations for this tick until all colliding carts are removed.
-            while (true) {
-                var collisionOccurred = simulation.tickInterruptingAfterCollision();
-                if (!collisionOccurred) break;
-                var newCollisions = simulation.collisions();
-
-                assert !newCollisions.isEmpty();
-                newCollisions.stream()
-                        .map(Cart::id)
-                        .forEach(collisions::add);
-
+            CartTrackSystem simulation = CartTrackSystem.from(this);
+            while (simulation.tickInterruptingAfterCollision()) {
+                this.carts().removeAll(simulation.collisions());
                 simulation = CartTrackSystem.from(this);
-                simulation.carts().removeIf(cart -> collisions.contains(cart.id));
             }
-
-            // Remove all the actual carts that collided in the simulation.
-            this.carts().removeIf(cart -> collisions.contains(cart.id));
 
             // Run an actual tick.
             carts.forEach(this::move);
