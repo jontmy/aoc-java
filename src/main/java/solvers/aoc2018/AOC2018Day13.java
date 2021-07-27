@@ -132,16 +132,32 @@ public class AOC2018Day13 extends AOCDay<String> {
             return new Cart(cart.x(), cart.y(), cart.direction());
         }
 
-        private int x() {
-            return x;
+        // Moves 1 step in the current direction.
+        // Does not check that the move is valid, i.e., that there is a track 1 step in that direction.
+        private void move() {
+            switch (direction) {
+                case LEFTWARD -> x--;
+                case RIGHTWARD -> x++;
+                case UPWARD -> y++;
+                case DOWNWARD -> y--;
+            }
         }
 
-        private int y() {
-            return y;
-        }
-
-        private Direction direction() {
-            return direction;
+        // Rotates to face a specified direction, then moves 1 step in that direction.
+        // Disallows 180 degree rotations (U-turns).
+        // Does not check that the move is valid, i.e., that there is a track 1 step in that direction.
+        private void move(Direction rotated) {
+            switch (rotated) {
+                case LEFTWARD, RIGHTWARD -> {
+                    if (direction == Direction.DOWNWARD || direction == Direction.UPWARD) direction = rotated;
+                    else throw new IllegalArgumentException(rotated.toString());
+                }
+                case UPWARD, DOWNWARD -> {
+                    if (direction == Direction.LEFTWARD || direction == Direction.RIGHTWARD) direction = rotated;
+                    else throw new IllegalArgumentException(rotated.toString());
+                }
+            }
+            move();
         }
 
         // Each time a cart has the option to turn (by arriving at any intersection), it turns left the first time,
@@ -157,17 +173,16 @@ public class AOC2018Day13 extends AOCDay<String> {
             return outcome;
         }
 
-        // Moves 1 step in the current direction.
-        // Does not check that the move is valid, i.e., that there is a track 1 step in that direction.
-        private void move() {
-
+        private int x() {
+            return x;
         }
 
-        // Rotates to face a specified direction, then moves 1 step in that direction.
-        // Disallows 180 degree rotations (U-turns).
-        // Does not check that the move is valid, i.e., that there is a track 1 step in that direction.
-        private void move(Direction direction) {
+        private int y() {
+            return y;
+        }
 
+        private Direction direction() {
+            return direction;
         }
 
         @Override
