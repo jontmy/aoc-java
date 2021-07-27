@@ -1,5 +1,6 @@
 package utils;
 
+import java.util.Objects;
 import java.util.function.Function;
 
 public record Pair<L, R>(L left, R right) {
@@ -15,6 +16,22 @@ public record Pair<L, R>(L left, R right) {
         var left = leftMapper.apply(this.left());
         var right = rightMapper.apply(this.right());
         return Pair.of(left, right);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Pair<?, ?> that = (Pair<?, ?>) o;
+        if (!Objects.equals(this.left, that.left)) return false;
+        return Objects.equals(this.right, that.right);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = left != null ? left.hashCode() : 0;
+        result = 31 * result + (right != null ? right.hashCode() : 0);
+        return result;
     }
 
     @Override
