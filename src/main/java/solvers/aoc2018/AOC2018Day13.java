@@ -1,7 +1,6 @@
 package solvers.aoc2018;
 
 import solvers.AOCDay;
-import utils.Pair;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -87,11 +86,21 @@ public class AOC2018Day13 extends AOCDay<String> {
                             tracks[x][y] = '|';
                             carts.add(Cart.of(x, y, Cart.Direction.DOWNWARD));
                         }
-                        default -> throw new AssertionError("Malformed track at %s: %s".formatted(Pair.of(x, y), track));
+                        default -> throw new AssertionError("Malformed track at (%s, %s): %s".formatted(x, y, track));
                     }
                 }
             }
             return CartTrackSystem.of(width, height, tracks, carts);
+        }
+
+        private char trackAheadOf(Cart cart) {
+            int x = cart.x(), y = cart.y();
+            return switch (cart.direction()) {
+                case LEFTWARD -> tracks[x - 1][y];
+                case RIGHTWARD -> tracks[x + 1][y];
+                case UPWARD -> tracks[x][y - 1];
+                case DOWNWARD -> tracks[x][y + 1];
+            };
         }
 
         @Override
@@ -138,8 +147,8 @@ public class AOC2018Day13 extends AOCDay<String> {
             switch (direction) {
                 case LEFTWARD -> x--;
                 case RIGHTWARD -> x++;
-                case UPWARD -> y++;
-                case DOWNWARD -> y--;
+                case UPWARD -> y--;
+                case DOWNWARD -> y++;
             }
         }
 
