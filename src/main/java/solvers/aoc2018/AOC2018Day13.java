@@ -1,12 +1,11 @@
 package solvers.aoc2018;
 
 import solvers.AOCDay;
+import utils.Pair;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class AOC2018Day13 extends AOCDay<String> {
@@ -21,7 +20,15 @@ public class AOC2018Day13 extends AOCDay<String> {
     @Override
     protected String solvePartOne(List<String> input) {
         var system = CartTrackSystem.from(initial);
-        return "";
+        while (true) {
+            if (system.tickInterruptingAfterCollision()) break;
+        }
+        var collisions = system.collisions();
+        assert !collisions.isEmpty() : "System was interrupted but no collisions were found.";
+        assert collisions.size() == 1 : "System was interrupted but more than 1 collision was found.";
+        var collision = collisions.get(0);
+        assert collision.left().x() == collision.right().x() && collision.left().y() == collision.right().y() : "Non-identical collision coordinates.";
+        return collision.left().x() + "," + collision.left().y();
     }
 
     @Override
@@ -93,7 +100,9 @@ public class AOC2018Day13 extends AOCDay<String> {
             return CartTrackSystem.of(width, height, tracks, carts);
         }
 
-        private void moveCart(Cart cart) {
+        // Moves a cart 1 step based on the track it is currently on.
+        // Returns true if a collision occurred after the move, otherwise false.
+        private boolean move(Cart cart) {
             switch (tracks[cart.x()][cart.y()]) {
                 case '|', '-' -> cart.move();
                 case '/' -> {
@@ -104,12 +113,39 @@ public class AOC2018Day13 extends AOCDay<String> {
                 }
                 case '\\' -> {
                     switch (cart.direction()) {
-                        case LEFTWARD, DOWNWARD -> cart.move(Cart.Intersection.RIGHT);
-                        case RIGHTWARD, UPWARD -> cart.move(Cart.Intersection.LEFT);
+                        case LEFTWARD, RIGHTWARD -> cart.move(Cart.Intersection.RIGHT);
+                        case UPWARD, DOWNWARD -> cart.move(Cart.Intersection.LEFT);
                     }
                 }
                 case '+' -> cart.move(cart.choose());
             }
+            // Efficient collision check - true if and only if any 2 or more carts share the same position.
+            return carts.stream().distinct().count() != carts.size();
+        }
+
+        // Moves all carts 1 step from a top-down, then left-to-right order, interrupting if any carts collide.
+        // Returns true if any cart collided with another, false if every cart moved without colliding with another.
+        private boolean tickInterruptingAfterCollision() {
+            Collections.sort(carts); // order from top-down, then left-to-right
+            for (Cart cart : carts) {
+                if (move(cart)) return true;
+            }
+            return false;
+        }
+
+        // Returns the pairs of carts that have collided in the current state.
+        // O(n^2) check for collisions. Use 'carts.stream().distinct().count() != carts.size()' instead of
+        // 'collisions().isEmpty()' to test for collisions.
+        private List<Pair<Cart, Cart>> collisions() {
+            var collisions = new ArrayList<Pair<Cart, Cart>>();
+            for (int i = 0; i < carts.size(); i++) {
+                var first = carts.get(i);
+                for (int j = i + 1; j < carts.size(); j++) {
+                    var second = carts.get(j);
+                    if (first.equals(second)) collisions.add(Pair.of(first, second));
+                }
+            }
+            return collisions;
         }
 
         @Override
@@ -118,7 +154,21 @@ public class AOC2018Day13 extends AOCDay<String> {
             sb.append(width).append("x").append(height).append(" cart-and-track system:\n");
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    sb.append(tracks[x][y]);
+                    Cart present = null;
+                    for (Cart cart : carts) {
+                        if (cart.x() == x && cart.y() == y) present = cart;
+                    }
+                    if (present == null) {
+                        sb.append(tracks[x][y]);
+                    }
+                    else {
+                        switch (present.direction) {
+                            case LEFTWARD -> sb.append("<");
+                            case RIGHTWARD -> sb.append(">");
+                            case UPWARD -> sb.append("^");
+                            case DOWNWARD -> sb.append("v");
+                        }
+                    }
                 }
                 sb.append("\n");
             }
@@ -212,6 +262,22 @@ public class AOC2018Day13 extends AOCDay<String> {
         // (again from left to right), then carts on the third row, and so on.
         public int compareTo(Cart that) {
             return Comparator.comparing(Cart::y).thenComparing(Cart::x).compare(this, that);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Cart cart = (Cart) o;
+            if (x != cart.x) return false;
+            return y == cart.y;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = x;
+            result = 31 * result + y;
+            return result;
         }
 
         @Override
