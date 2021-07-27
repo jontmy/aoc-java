@@ -93,14 +93,23 @@ public class AOC2018Day13 extends AOCDay<String> {
             return CartTrackSystem.of(width, height, tracks, carts);
         }
 
-        private char trackAheadOf(Cart cart) {
-            int x = cart.x(), y = cart.y();
-            return switch (cart.direction()) {
-                case LEFTWARD -> tracks[x - 1][y];
-                case RIGHTWARD -> tracks[x + 1][y];
-                case UPWARD -> tracks[x][y - 1];
-                case DOWNWARD -> tracks[x][y + 1];
-            };
+        private void moveCart(Cart cart) {
+            switch (tracks[cart.x()][cart.y()]) {
+                case '|', '-' -> cart.move();
+                case '/' -> {
+                    switch (cart.direction()) {
+                        case LEFTWARD, RIGHTWARD -> cart.move(Cart.Intersection.LEFT);
+                        case UPWARD, DOWNWARD -> cart.move(Cart.Intersection.RIGHT);
+                    }
+                }
+                case '\\' -> {
+                    switch (cart.direction()) {
+                        case LEFTWARD, DOWNWARD -> cart.move(Cart.Intersection.RIGHT);
+                        case RIGHTWARD, UPWARD -> cart.move(Cart.Intersection.LEFT);
+                    }
+                }
+                case '+' -> cart.move(cart.choose());
+            }
         }
 
         @Override
@@ -152,19 +161,23 @@ public class AOC2018Day13 extends AOCDay<String> {
             }
         }
 
-        // Rotates to face a specified direction, then moves 1 step in that direction.
+        // Rotates to face a specified direction (Intersection.LEFT or Intersection.RIGHT), then moves 1 step in that direction.
         // Disallows 180 degree rotations (U-turns).
         // Does not check that the move is valid, i.e., that there is a track 1 step in that direction.
-        private void move(Direction rotated) {
-            switch (rotated) {
-                case LEFTWARD, RIGHTWARD -> {
-                    if (direction == Direction.DOWNWARD || direction == Direction.UPWARD) direction = rotated;
-                    else throw new IllegalArgumentException(rotated.toString());
-                }
-                case UPWARD, DOWNWARD -> {
-                    if (direction == Direction.LEFTWARD || direction == Direction.RIGHTWARD) direction = rotated;
-                    else throw new IllegalArgumentException(rotated.toString());
-                }
+        private void move(Intersection rotation) {
+            switch (rotation) {
+                case LEFT -> direction = switch(direction) {
+                    case LEFTWARD -> Direction.DOWNWARD;
+                    case RIGHTWARD -> Direction.UPWARD;
+                    case UPWARD -> Direction.LEFTWARD;
+                    case DOWNWARD -> Direction.RIGHTWARD;
+                };
+                case RIGHT -> direction = switch(direction) {
+                    case LEFTWARD -> Direction.UPWARD;
+                    case RIGHTWARD -> Direction.DOWNWARD;
+                    case UPWARD -> Direction.RIGHTWARD;
+                    case DOWNWARD -> Direction.LEFTWARD;
+                };
             }
             move();
         }
