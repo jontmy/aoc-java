@@ -15,10 +15,11 @@ public class AOC2018Day15 extends AOCDay<Integer> {
     @Override
     protected Integer solvePartOne(List<String> input) {
         var cavern = Cavern.parse(super.input);
-        assert cavern.goblins().size() == 20;
-        assert cavern.elves().size() == 10;
-        LOGGER.debug(cavern);
-        LOGGER.info(Unit.pathfind(cavern, 4, 15, cavern.elves()));
+        // assert cavern.goblins().size() == 20;
+        // assert cavern.elves().size() == 10;
+        // Unit.pathfind(cavern, 4, 15, cavern.elves().subList(cavern.elves().size() - 1, cavern.elves().size()));
+        // LOGGER.debug(cavern);
+        LOGGER.info(Unit.pathfind(cavern, 10, 1, cavern.elves().subList(cavern.elves().size() - 1, cavern.elves().size())));
         return 0;
     }
 
@@ -149,16 +150,19 @@ public class AOC2018Day15 extends AOCDay<Integer> {
                     .collect(Collectors.toSet());
 
             var paths = adjacent.stream()
+                    .filter(adj -> cavern.map()[adj.x()][adj.y()] == Cavern.TRAVERSABLE)
                     .map(adj -> CavernPath.of(start, adj))
                     .toList();
             var searched = new HashSet<Coordinates>();
+            searched.add(start);
             var results = new HashSet<CavernPath>();
 
             while (!paths.isEmpty()) {
                 // Add the paths that end at a target coordinate to the set of results.
-                paths.stream()
+                results = paths.stream()
+                        .parallel()
                         .filter(path -> targets.contains(path.end()))
-                        .forEach(results::add);
+                        .collect(Collectors.toCollection(HashSet::new));
 
                 // Optimization: Return the paths that end on a target coordinate, if any, otherwise continue.
                 if (!results.isEmpty()) break;
@@ -169,9 +173,10 @@ public class AOC2018Day15 extends AOCDay<Integer> {
                         .forEach(searched::add);
 
                 // Add all branching paths - by adjacent tile extension - to the list of paths,
-                // except those that end in coordinates that have already been searched,
+                // pruning those that end in coordinates that have already been searched,
                 // and those that end in coordinates that are not traversable.
                 paths = paths.stream()
+                        .parallel()
                         .flatMap(path -> cavern.adjacent(path.end())
                                 .stream()
                                 .filter(adj -> cavern.map()[adj.x()][adj.y()] == Cavern.TRAVERSABLE)
