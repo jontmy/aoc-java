@@ -4,7 +4,6 @@ import solvers.AOCDay;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -32,8 +31,13 @@ public class AOC2018Day14 extends AOCDay<String> {
 
     @Override
     protected String solvePartTwo(List<String> input) {
-        // var scoreboard = parse(input);
-        return "";
+        var scoreboard = parse(List.of("37"));
+        var min = 0;
+        while (!scoreboard.scores(min, scoreboard.size() - 1).contains(input.get(0))) {
+            min = scoreboard.size() - 4;
+            scoreboard.createNewRecipes();
+        }
+        return String.valueOf(scoreboard.scores(0, scoreboard.size() - 1).indexOf(input.get(0)) - 1);
     }
 
     private static final class Elf {
@@ -116,6 +120,14 @@ public class AOC2018Day14 extends AOCDay<String> {
                     .toList();
         }
 
+        private String scores(int from, int to) {
+            return recipes(from, to).stream()
+                    .map(Recipe::score)
+                    .map(String::valueOf)
+                    .reduce(new StringBuilder(), StringBuilder::append, StringBuilder::append)
+                    .toString();
+        }
+
         // The Elves think their skill will improve after making a few recipes.
         // However, that could take ages; you can speed this up considerably by identifying the
         // scores of the ten recipes after that.
@@ -124,11 +136,11 @@ public class AOC2018Day14 extends AOCDay<String> {
             while (size < nNewRecipes + 10) {
                 createNewRecipes();
             }
-            return recipes(nNewRecipes + 1, nNewRecipes + 10).stream()
-                    .map(Recipe::score)
-                    .map(String::valueOf)
-                    .reduce(new StringBuilder(), StringBuilder::append, StringBuilder::append)
-                    .toString();
+            return scores(nNewRecipes + 1, nNewRecipes + 10);
+        }
+
+        public int size() {
+            return size;
         }
 
         @Override
