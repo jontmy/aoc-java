@@ -169,8 +169,6 @@ public class AOC2018Day15 extends AOCDay<Integer> {
                 // except those that end in coordinates that have already been searched.
                 paths = paths.stream()
                         .flatMap(path -> cavern.adjacent(path.end()).stream()
-                                // .filter(adj -> adj.x() > 0 && adj.x() < cavern.width())
-                                // .filter(adj -> adj.y() > 0 && adj.x() < cavern.height())
                                 .map(path::extend))
                         .filter(path -> !searched.contains(path.end()))
                         .toList();
