@@ -4,10 +4,9 @@ import solvers.AOCDay;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class AOC2018Day15 extends AOCDay<Integer> {
     public AOC2018Day15() throws IOException, URISyntaxException {
@@ -16,7 +15,7 @@ public class AOC2018Day15 extends AOCDay<Integer> {
         // assert cavern.goblins().size() == 20;
         // assert cavern.elves().size() == 10;
         LOGGER.debug(cavern);
-        LOGGER.info(Unit.pathfind(cavern, 1, 1, Cavern.ELF));
+        LOGGER.info(Unit.pathfind(cavern, 1, 1, cavern.elves()));
     }
 
     @Override
@@ -67,6 +66,12 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             if (y + 1 >= 0 && y + 1 < height) adj.add(Coordinates.at(x, y + 1));
             if (y - 1 >= 0 && y - 1 < height) adj.add(Coordinates.at(x, y - 1));
             return adj;
+        }
+
+        private List<Coordinates> adjacent(Coordinates coordinates) {
+            return adjacent(coordinates.x(), coordinates.y()).stream()
+                    .map(c -> Coordinates.at(c.x(), c.y()))
+                    .toList();
         }
 
         @Override
@@ -132,39 +137,50 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             this.hp = 200;
         }
 
-        private static Coordinates pathfind(Cavern cavern, int x, int y, char target) {
+        private static Set<CavernPath> pathfind(Cavern cavern, int x, int y, Collection<? extends Unit> targetUnits) {
+            var startCoordinates = Coordinates.at(x, y);
+            var startPath = CavernPath.of(x, y, x, y);
+            var targetCoordinates = targetUnits.stream()
+                    .map(Unit::coordinates)
+                    .collect(Collectors.toSet());
+            if (targetCoordinates.contains(startCoordinates)) return Set.of(startPath);
+
+            var searched = new HashSet<Coordinates>();
+            var results = new HashSet<CavernPath>();
+            var queue = new PriorityQueue<>(List.of(startPath));
+            while (!queue.isEmpty()) {
+                var searchPath = queue.remove();
+                var searchCoordinates = searchPath.end();
+                LOGGER.debug(searchCoordinates);
+                searched.add(searchCoordinates);
+                if (targetCoordinates.contains(searchCoordinates)) {
+                    if (!results.isEmpty()) {
+                        if (results.iterator().next().distance < searchPath.distance) break;
+                    }
+                    results.add(searchPath);
+                } else {
+                    cavern.adjacent(searchPath.end()).stream()
+                            .filter(adj -> adj.x() > 0 && adj.x() < cavern.width())
+                            .filter(adj -> adj.y() > 0 && adj.x() < cavern.height())
+                            .filter(Predicate.not(searched::contains))
+                            .map(adj -> CavernPath.extend(searchPath, adj))
+                            .forEach(queue::add);
+                }
+            }
+            return results;
+        }
+
+        private static Coordinates path(Cavern cavern, int x, int y, Collection<? extends Unit> targetUnits) {
             var bestPath = cavern.adjacent(x, y).stream()
-                    .map(c -> CavernPath.of(c.x(), c.y(), c.x(), c.y()))
-                    .map(p -> pathfind(cavern, p, target))
+                    .map(p -> pathfind(cavern, x, y, targetUnits))
+                    .flatMap(Set::stream)
                     .min(CavernPath.NATURAL_ORDER_COMPARATOR)
                     .orElseThrow();
             return bestPath.start();
         }
 
-        private static CavernPath pathfind(Cavern cavern, CavernPath path, char target) {
-            LOGGER.debug(path.end());
-            if (target != Cavern.GOBLIN && target != Cavern.ELF)
-                throw new IllegalArgumentException(String.valueOf(target));
-            char antitarget = target == Cavern.GOBLIN ? Cavern.ELF : Cavern.GOBLIN;
-            int x = path.end().x(), y = path.end().y();
-            assert x > 0 && x < cavern.width();
-            assert y > 0 && y < cavern.height();
-            char c = cavern.map()[x][y];
-            assert c == Cavern.WALL || c == Cavern.TRAVERSABLE || c == Cavern.GOBLIN || c == Cavern.ELF;
-
-            // Base case 1: search path ends on target
-            if (c == target) return path;
-
-                // Base case 2: search path cannot be extended, i.e., ends on un-traversable anti-target unit or wall
-            else if (c == antitarget || c == Cavern.WALL) return null;
-
-            // Recursive case: search path can be extended by 1 step
-            var shortestPath = cavern.adjacent(x, y).stream()
-                    .map(adj -> CavernPath.extend(path, adj))
-                    .map(p -> pathfind(cavern, p, target)) // recursive b.f.s.
-                    .filter(Objects::nonNull)
-                    .min(CavernPath.NATURAL_ORDER_COMPARATOR);
-            return shortestPath.orElse(null);
+        private Coordinates coordinates() {
+            return Coordinates.at(x, y);
         }
 
         private int x() {
@@ -217,18 +233,32 @@ public class AOC2018Day15 extends AOCDay<Integer> {
         }
 
         @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Coordinates that = (Coordinates) o;
+            if (x != that.x) return false;
+            return y == that.y;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = x;
+            result = 31 * result + y;
+            return result;
+        }
+
+        @Override
         public String toString() {
-            return "Coordinates{" +
-                    "x=" + x +
-                    ", y=" + y +
-                    '}';
+            return "(%d, %d}".formatted(x, y);
         }
     }
 
     private record CavernPath(Coordinates start, Coordinates end, int distance) implements Comparable<CavernPath> {
         private static final Comparator<CavernPath> NATURAL_ORDER_COMPARATOR = Comparator
                 .comparing(CavernPath::distance)
-                .thenComparing(CavernPath::start, Coordinates.READING_ORDER_COMPARATOR);
+                .thenComparing(CavernPath::start, Coordinates.READING_ORDER_COMPARATOR)
+                .thenComparing(CavernPath::end, Coordinates.READING_ORDER_COMPARATOR);
 
         private static CavernPath of(int startX, int startY, int endX, int endY) {
             var start = Coordinates.at(startX, startY);
