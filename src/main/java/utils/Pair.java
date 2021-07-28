@@ -3,7 +3,15 @@ package utils;
 import java.util.Objects;
 import java.util.function.Function;
 
-public record Pair<L, R>(L left, R right) {
+public class Pair<L, R> {
+    private final L left;
+    private final R right;
+
+    public Pair(L left, R right) {
+        this.left = left;
+        this.right = right;
+    }
+
     public static <L, R> Pair<L, R> of(L left, R right) {
         return new Pair<>(left, right);
     }
@@ -37,5 +45,13 @@ public record Pair<L, R>(L left, R right) {
     @Override
     public String toString() {
         return "(%s, %s)".formatted(left.toString(), right.toString());
+    }
+
+    public L left() {
+        return left;
+    }
+
+    public R right() {
+        return right;
     }
 }
