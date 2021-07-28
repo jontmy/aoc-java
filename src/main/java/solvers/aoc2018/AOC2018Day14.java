@@ -4,22 +4,19 @@ import solvers.AOCDay;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class AOC2018Day14 extends AOCDay<String> {
     public AOC2018Day14() throws IOException, URISyntaxException {
         super(14, 2018);
-    }
-
-    public static void main(String[] args) {
         var scoreboard = parse(List.of("37"));
-        LOGGER.info(scoreboard);
-        for (int i = 0; i < 15; i++) {
-            scoreboard.createNewRecipes();
-            LOGGER.info(scoreboard);
-        }
+        assert scoreboard.improvement(5).equals("0124515891");
+        assert scoreboard.improvement(9).equals("5158916779");
+        assert scoreboard.improvement(18).equals("9251071085");
+        assert scoreboard.improvement(2018).equals("5941429882");
     }
 
     private static Scoreboard parse(List<String> input) {
@@ -29,13 +26,13 @@ public class AOC2018Day14 extends AOCDay<String> {
 
     @Override
     protected String solvePartOne(List<String> input) {
-        var scoreboard = parse(input);
-        return "";
+        var scoreboard = parse(List.of("37"));
+        return scoreboard.improvement(Integer.parseInt(input.get(0)));
     }
 
     @Override
     protected String solvePartTwo(List<String> input) {
-        var scoreboard = parse(input);
+        // var scoreboard = parse(input);
         return "";
     }
 
@@ -90,7 +87,7 @@ public class AOC2018Day14 extends AOCDay<String> {
         private void appendRecipes(List<Recipe> recipes) {
             Recipe.link(last, recipes.get(0));
             Recipe.link(recipes.get(recipes.size() - 1), first);
-            last = recipes.get(recipes.size() - 1);
+            this.last = recipes.get(recipes.size() - 1);
             this.size += recipes.size();
         }
 
@@ -110,8 +107,28 @@ public class AOC2018Day14 extends AOCDay<String> {
             elves.forEach(Elf::pickNewCurrentRecipe);
         }
 
-        private int size() {
-            return size;
+        // Returns the list of recipes between an inclusive lower bound index, and an inclusive upper bound index.
+        private List<Recipe> recipes(int from, int to) {
+            if (to <= from) throw new IllegalArgumentException(String.valueOf(to));
+            var start = (from > size / 2) ? last.backward(size - from) : first.forward(from - 1);
+            return Stream.iterate(start, Recipe::next)
+                    .limit(to - from + 1)
+                    .toList();
+        }
+
+        // The Elves think their skill will improve after making a few recipes.
+        // However, that could take ages; you can speed this up considerably by identifying the
+        // scores of the ten recipes after that.
+        // Returns the improvement after the elves have worked on n new recipes.
+        private String improvement(int nNewRecipes) {
+            while (size < nNewRecipes + 10) {
+                createNewRecipes();
+            }
+            return recipes(nNewRecipes + 1, nNewRecipes + 10).stream()
+                    .map(Recipe::score)
+                    .map(String::valueOf)
+                    .reduce(new StringBuilder(), StringBuilder::append, StringBuilder::append)
+                    .toString();
         }
 
         @Override
@@ -120,6 +137,7 @@ public class AOC2018Day14 extends AOCDay<String> {
                     .map(Elf::currentRecipe)
                     .collect(Collectors.toSet());
             var sb = new StringBuilder();
+            sb.append(size).append( " recipes: ");
             var cursor = first;
             do {
                 if (elvesRecipes.contains(cursor)) sb.append("(");
@@ -145,6 +163,13 @@ public class AOC2018Day14 extends AOCDay<String> {
         // Returns a new recipe with a specified score with no links to a previous or next recipe.
         private static Recipe of(int score) {
             return new Recipe(score, null, null);
+        }
+
+        // Links 2 recipes together, where the first is the previous recipe of the second, and the
+        // second is the next recipe of the first.
+        private static void link(Recipe l, Recipe r) {
+            if (l != null) l.next = r;
+            if (r != null) r.prev = l;
         }
 
         // Returns a list of new recipes parsed from a string of specified scores, linked between one another.
@@ -173,21 +198,23 @@ public class AOC2018Day14 extends AOCDay<String> {
                     .map(Recipe::score)
                     .reduce(Integer::sum)
                     .orElseThrow();
-
             // This creates new recipes from the digits of the sum of the current recipes' scores.
             return parse(String.valueOf(sum));
         }
 
-        // Links 2 recipes together, where the first is the previous recipe of the second, and the
-        // second is the next recipe of the first.
-        private static void link(Recipe l, Recipe r) {
-            if (l != null) l.next = r;
-            if (r != null) r.prev = l;
+        // Returns the recipe n steps backward from the current recipe.
+        private Recipe backward(int steps) {
+            if (steps < 0) return forward(Math.abs(steps));
+            var cursor = this;
+            for (int i = 0; i < steps; i++) {
+                cursor = cursor.prev();
+            }
+            return cursor;
         }
 
         // Returns the recipe n steps forward from the current recipe.
         private Recipe forward(int steps) {
-            if (steps <= 0) throw new IllegalArgumentException(String.valueOf(steps));
+            if (steps < 0) return backward(Math.abs(steps));
             var cursor = this;
             for (int i = 0; i < steps; i++) {
                 cursor = cursor.next();
@@ -209,11 +236,7 @@ public class AOC2018Day14 extends AOCDay<String> {
 
         @Override
         public String toString() {
-            return "Recipe{" +
-                    "score=" + score +
-                    ", prev=" + prev +
-                    ", next=" + next +
-                    '}';
+            return prev.score + " <- " + this.score + " -> " + next.score;
         }
     }
 }
