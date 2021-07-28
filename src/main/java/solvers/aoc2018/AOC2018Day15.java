@@ -61,7 +61,7 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             if (y < 0 || y > height) throw new IllegalArgumentException(String.valueOf(y));
             var adj = new ArrayList<Coordinates>();
             if (x + 1 >= 0 && x + 1 < width) adj.add(Coordinates.at(x + 1, y));
-            if (x + 1 >= 0 && x + 1 < width) adj.add(Coordinates.at(x - 1, y));
+            if (x - 1 >= 0 && x - 1 < width) adj.add(Coordinates.at(x - 1, y));
             if (y + 1 >= 0 && y + 1 < height) adj.add(Coordinates.at(x, y + 1));
             if (y - 1 >= 0 && y - 1 < height) adj.add(Coordinates.at(x, y - 1));
             return adj;
@@ -169,8 +169,8 @@ public class AOC2018Day15 extends AOCDay<Integer> {
                 // except those that end in coordinates that have already been searched.
                 paths = paths.stream()
                         .flatMap(path -> cavern.adjacent(path.end()).stream()
-                                .filter(adj -> adj.x() > 0 && adj.x() < cavern.width())
-                                .filter(adj -> adj.y() > 0 && adj.x() < cavern.height())
+                                // .filter(adj -> adj.x() > 0 && adj.x() < cavern.width())
+                                // .filter(adj -> adj.y() > 0 && adj.x() < cavern.height())
                                 .map(path::extend))
                         .filter(path -> !searched.contains(path.end()))
                         .toList();
