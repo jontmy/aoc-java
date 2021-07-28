@@ -5,7 +5,6 @@ import solvers.AOCDay;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class AOC2018Day15 extends AOCDay<Integer> {
@@ -137,46 +136,46 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             this.hp = 200;
         }
 
-        private static Set<CavernPath> pathfind(Cavern cavern, int x, int y, Collection<? extends Unit> targetUnits) {
-            var startCoordinates = Coordinates.at(x, y);
-            var startPath = CavernPath.of(x, y, x, y);
-            var targetCoordinates = targetUnits.stream()
+        // Returns the best path from a coordinate to any specified targets.
+        private static Optional<CavernPath> pathfind(Cavern cavern, int x, int y, Collection<? extends Unit> targetUnits) {
+            var start = Coordinates.at(x, y);
+            var adjacent = cavern.adjacent(start);
+            var targets = targetUnits.stream()
                     .map(Unit::coordinates)
                     .collect(Collectors.toSet());
-            if (targetCoordinates.contains(startCoordinates)) return Set.of(startPath);
 
+            var paths = adjacent.stream()
+                    .map(adj -> CavernPath.of(start, adj))
+                    .toList();
             var searched = new HashSet<Coordinates>();
             var results = new HashSet<CavernPath>();
-            var queue = new PriorityQueue<>(List.of(startPath));
-            while (!queue.isEmpty()) {
-                var searchPath = queue.remove();
-                var searchCoordinates = searchPath.end();
-                LOGGER.debug(searchCoordinates);
-                searched.add(searchCoordinates);
-                if (targetCoordinates.contains(searchCoordinates)) {
-                    if (!results.isEmpty()) {
-                        if (results.iterator().next().distance < searchPath.distance) break;
-                    }
-                    results.add(searchPath);
-                } else {
-                    cavern.adjacent(searchPath.end()).stream()
-                            .filter(adj -> adj.x() > 0 && adj.x() < cavern.width())
-                            .filter(adj -> adj.y() > 0 && adj.x() < cavern.height())
-                            .filter(Predicate.not(searched::contains))
-                            .map(adj -> CavernPath.extend(searchPath, adj))
-                            .forEach(queue::add);
-                }
-            }
-            return results;
-        }
 
-        private static Coordinates path(Cavern cavern, int x, int y, Collection<? extends Unit> targetUnits) {
-            var bestPath = cavern.adjacent(x, y).stream()
-                    .map(p -> pathfind(cavern, x, y, targetUnits))
-                    .flatMap(Set::stream)
-                    .min(CavernPath.NATURAL_ORDER_COMPARATOR)
-                    .orElseThrow();
-            return bestPath.start();
+            while (!paths.isEmpty()) {
+                // Add the paths that end at a target coordinate to the set of results.
+                paths.stream()
+                        .peek(LOGGER::debug)
+                        .filter(path -> targets.contains(path.end()))
+                        .forEach(results::add);
+
+                // Optimization: Return the paths that end on a target coordinate, if any, otherwise continue.
+                if (!results.isEmpty()) break;
+
+                // Mark the coordinates that have been searched.
+                paths.stream()
+                        .map(CavernPath::end)
+                        .forEach(searched::add);
+
+                // Add all branching paths - by adjacent tile extension - to the list of paths,
+                // except those that end in coordinates that have already been searched.
+                paths = paths.stream()
+                        .flatMap(path -> cavern.adjacent(path.end()).stream()
+                                .filter(adj -> adj.x() > 0 && adj.x() < cavern.width())
+                                .filter(adj -> adj.y() > 0 && adj.x() < cavern.height())
+                                .map(path::extend))
+                        .filter(path -> !searched.contains(path.end()))
+                        .toList();
+            }
+            return results.stream().min(Comparator.naturalOrder());
         }
 
         private Coordinates coordinates() {
@@ -219,10 +218,10 @@ public class AOC2018Day15 extends AOCDay<Integer> {
         }
     }
 
-    private record Coordinates(int x, int y) {
-        private static final Comparator<Coordinates> READING_ORDER_COMPARATOR = Comparator
-                .comparing(Coordinates::y)
-                .thenComparing(Coordinates::x);
+    private record Coordinates(int x, int y) implements Comparable<Coordinates> {
+        private static final Comparator<Coordinates> READING_ORDER_COMPARATOR =
+                Comparator.comparing(Coordinates::y)
+                        .thenComparing(Coordinates::x);
 
         private static Coordinates at(int x, int y) {
             return new Coordinates(x, y);
@@ -249,28 +248,27 @@ public class AOC2018Day15 extends AOCDay<Integer> {
         }
 
         @Override
+        public int compareTo(Coordinates that) {
+            return READING_ORDER_COMPARATOR.compare(this, that);
+        }
+
+        @Override
         public String toString() {
             return "(%d, %d}".formatted(x, y);
         }
     }
 
-    private record CavernPath(Coordinates start, Coordinates end, int distance) implements Comparable<CavernPath> {
-        private static final Comparator<CavernPath> NATURAL_ORDER_COMPARATOR = Comparator
-                .comparing(CavernPath::distance)
-                .thenComparing(CavernPath::start, Coordinates.READING_ORDER_COMPARATOR)
-                .thenComparing(CavernPath::end, Coordinates.READING_ORDER_COMPARATOR);
+    private record CavernPath(Coordinates start, Coordinates step, Coordinates end,
+                              int distance) implements Comparable<CavernPath> {
+        private static final Comparator<CavernPath> NATURAL_ORDER_COMPARATOR =
+                Comparator.comparing(CavernPath::distance)
+                        .thenComparing(CavernPath::start, Coordinates.READING_ORDER_COMPARATOR)
+                        .thenComparing(CavernPath::step, Coordinates.READING_ORDER_COMPARATOR)
+                        .thenComparing(CavernPath::end, Coordinates.READING_ORDER_COMPARATOR);
 
-        private static CavernPath of(int startX, int startY, int endX, int endY) {
-            var start = Coordinates.at(startX, startY);
-            var end = Coordinates.at(endX, endY);
-            var distance = manhattan(start, end);
-            return new CavernPath(start, end, distance);
-        }
-
-        // Extends the path by 1 step in either the x or y direction.
-        private static CavernPath extend(CavernPath path, Coordinates end) {
-            assert manhattan(path.end(), end) == 1;
-            return new CavernPath(path.start(), end, path.distance() + 1);
+        private static CavernPath of(Coordinates start, Coordinates step) {
+            var distance = manhattan(start, step);
+            return new CavernPath(start, step, Coordinates.from(step), distance);
         }
 
         // Returns the Manhattan distance between 2 coordinates.
@@ -278,11 +276,23 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             return Math.abs(start.x() - end.x()) + Math.abs(start.y() - end.y());
         }
 
+        // Extends the path by 1 step in either the x or y direction.
+        private CavernPath extend(Coordinates end) {
+            assert manhattan(this.end(), end) == 1
+                    : "Absolute step distance of %d != 1.".formatted(manhattan(this.end(), end));
+            return new CavernPath(this.start(), this.step(), end, this.distance() + 1);
+        }
+
         // If multiple squares are in range and tied for being reachable in the fewest steps (distance),
         // the square which is first in reading order is chosen.
         @Override
         public int compareTo(CavernPath that) {
             return NATURAL_ORDER_COMPARATOR.compare(this, that);
+        }
+
+        @Override
+        public String toString() {
+            return "%s -> %s -> %d step(s) -> %s".formatted(start, step, distance - 1, end);
         }
     }
 }
