@@ -10,15 +10,15 @@ import java.util.stream.Collectors;
 public class AOC2018Day15 extends AOCDay<Integer> {
     public AOC2018Day15() throws IOException, URISyntaxException {
         super(15, 2018);
-        var cavern = Cavern.parse(super.input);
-        // assert cavern.goblins().size() == 20;
-        // assert cavern.elves().size() == 10;
-        LOGGER.debug(cavern);
-        LOGGER.info(Unit.pathfind(cavern, 1, 1, cavern.elves()));
     }
 
     @Override
     protected Integer solvePartOne(List<String> input) {
+        var cavern = Cavern.parse(super.input);
+        assert cavern.goblins().size() == 20;
+        assert cavern.elves().size() == 10;
+        LOGGER.debug(cavern);
+        LOGGER.info(Unit.pathfind(cavern, 4, 15, cavern.elves()));
         return 0;
     }
 
@@ -46,11 +46,15 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             for (int x = 0; x < width; x++) {
                 for (int y = 0; y < height; y++) {
                     var c = input.get(y).charAt(x);
-                    map[x][y] = c;
-                    if (c == WALL || c == TRAVERSABLE) continue;
-                    var unitBuilder = new Unit.Builder().setX(x).setY(y);
-                    if (c == GOBLIN) goblins.add(unitBuilder.buildGoblin());
-                    else if (c == ELF) elves.add(unitBuilder.buildElf());
+                    if (c == WALL || c == TRAVERSABLE) {
+                        map[x][y] = c;
+                    }
+                    else {
+                        map[x][y] = TRAVERSABLE;
+                        var unitBuilder = new Unit.Builder().setX(x).setY(y);
+                        if (c == GOBLIN) goblins.add(unitBuilder.buildGoblin());
+                        else if (c == ELF) elves.add(unitBuilder.buildElf());
+                    }
                 }
             }
             return new Cavern(map, width, height, goblins, elves);
@@ -153,7 +157,6 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             while (!paths.isEmpty()) {
                 // Add the paths that end at a target coordinate to the set of results.
                 paths.stream()
-                        .peek(LOGGER::debug)
                         .filter(path -> targets.contains(path.end()))
                         .forEach(results::add);
 
@@ -166,9 +169,12 @@ public class AOC2018Day15 extends AOCDay<Integer> {
                         .forEach(searched::add);
 
                 // Add all branching paths - by adjacent tile extension - to the list of paths,
-                // except those that end in coordinates that have already been searched.
+                // except those that end in coordinates that have already been searched,
+                // and those that end in coordinates that are not traversable.
                 paths = paths.stream()
-                        .flatMap(path -> cavern.adjacent(path.end()).stream()
+                        .flatMap(path -> cavern.adjacent(path.end())
+                                .stream()
+                                .filter(adj -> cavern.map()[adj.x()][adj.y()] == Cavern.TRAVERSABLE)
                                 .map(path::extend))
                         .filter(path -> !searched.contains(path.end()))
                         .toList();
