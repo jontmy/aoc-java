@@ -18,8 +18,17 @@ public class AOC2018Day15 extends AOCDay<Integer> {
         // assert cavern.goblins().size() == 20;
         // assert cavern.elves().size() == 10;
         // Unit.pathfind(cavern, 4, 15, cavern.elves().subList(cavern.elves().size() - 1, cavern.elves().size()));
-        // LOGGER.debug(cavern);
-        LOGGER.info(Unit.pathfind(cavern, 10, 1, cavern.elves().subList(cavern.elves().size() - 1, cavern.elves().size())));
+        LOGGER.debug(cavern);
+        var goblin = cavern.goblins().stream().min(Comparator.naturalOrder()).orElseThrow();
+        var elf = cavern.elves().stream().max(Comparator.naturalOrder()).orElseThrow();
+        LOGGER.info(goblin.pathfind(cavern, cavern.elves()));
+        LOGGER.info(elf.pathfind(cavern, cavern.goblins()));
+        // LOGGER.info(goblin.pathfind(cavern, List.of(elf)));
+        for (int i = 0; i < 20; i++) {
+            cavern.simulateRound();
+            LOGGER.debug(cavern);
+        }
+        LOGGER.debug(cavern);
         return 0;
     }
 
@@ -49,8 +58,7 @@ public class AOC2018Day15 extends AOCDay<Integer> {
                     var c = input.get(y).charAt(x);
                     if (c == WALL || c == TRAVERSABLE) {
                         map[x][y] = c;
-                    }
-                    else {
+                    } else {
                         map[x][y] = TRAVERSABLE;
                         var unitBuilder = new Unit.Builder().setX(x).setY(y);
                         if (c == GOBLIN) goblins.add(unitBuilder.buildGoblin());
@@ -78,13 +86,29 @@ public class AOC2018Day15 extends AOCDay<Integer> {
                     .toList();
         }
 
+        private void simulateRound() {
+            var queue = new PriorityQueue<Unit>();
+            queue.addAll(elves);
+            queue.addAll(goblins);
+            while (!queue.isEmpty()) {
+                var unit = queue.remove();
+                Optional<CavernPath> path;
+                if (unit instanceof Goblin goblin) path = goblin.pathfind(this, elves);
+                else if (unit instanceof Elf elf) path = elf.pathfind(this, goblins);
+                else throw new IllegalStateException(unit.toString());
+                path.ifPresent(unit::step);
+            }
+        }
+
         @Override
         public String toString() {
             var sb = new StringBuilder();
             sb.append(width).append(" x ").append(height).append(" cavern:\n");
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    sb.append(map[x][y]);
+                    if (Unit.unitPresentAt(x, y, goblins)) sb.append('G');
+                    else if (Unit.unitPresentAt(x, y, elves)) sb.append('E');
+                    else sb.append(map[x][y]);
                 }
                 sb.append("\n");
             }
@@ -122,18 +146,18 @@ public class AOC2018Day15 extends AOCDay<Integer> {
         }
     }
 
-    private static class Unit {
-        private static final Comparator<Unit> READING_COORDINATES_COMPARATOR = Comparator
+    private static class Unit implements Comparable<Unit> {
+        protected static final Comparator<Unit> READING_COORDINATES_COMPARATOR = Comparator
                 .comparing(Unit::y)
                 .thenComparing(Unit::x);
-        private static final Comparator<Unit> DISPLAY_COORDINATES_COMPARATOR = Comparator
+        protected static final Comparator<Unit> DISPLAY_COORDINATES_COMPARATOR = Comparator
                 .comparing(Unit::x)
                 .thenComparing(Unit::y);
-        private static final int ATK = 3;
+        protected static final int ATK = 3;
 
-        private final int x;
-        private final int y;
-        private final int hp;
+        protected int x;
+        protected int y;
+        protected int hp;
 
         private Unit(int x, int y) {
             this.x = x;
@@ -141,13 +165,32 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             this.hp = 200;
         }
 
+        private static boolean unitPresentAt(Coordinates coordinates, List<Unit> units) {
+            return units.stream()
+                    .map(Unit::coordinates)
+                    .anyMatch(coordinates::equals);
+        }
+
+        private static boolean unitPresentAt(int x, int y, List<Unit> units) {
+            return unitPresentAt(Coordinates.at(x, y), units);
+        }
+
+
         // Returns the best path from a coordinate to any specified targets.
-        private static Optional<CavernPath> pathfind(Cavern cavern, int x, int y, Collection<? extends Unit> targetUnits) {
+        protected Optional<CavernPath> pathfind(Cavern cavern, List<Unit> targetUnits) {
             var start = Coordinates.at(x, y);
             var adjacent = cavern.adjacent(start);
             var targets = targetUnits.stream()
                     .map(Unit::coordinates)
+                    .map(cavern::adjacent)
+                    .flatMap(List::stream)
                     .collect(Collectors.toSet());
+
+            // Check if this unit is already adjacent to a target unit.
+            // If it is, return an empty Optional as this unit will not need to move.
+            if (adjacent.stream().anyMatch(adj -> Unit.unitPresentAt(adj, targetUnits))) {
+                return Optional.empty();
+            }
 
             var paths = adjacent.stream()
                     .filter(adj -> cavern.map()[adj.x()][adj.y()] == Cavern.TRAVERSABLE)
@@ -180,6 +223,8 @@ public class AOC2018Day15 extends AOCDay<Integer> {
                         .flatMap(path -> cavern.adjacent(path.end())
                                 .stream()
                                 .filter(adj -> cavern.map()[adj.x()][adj.y()] == Cavern.TRAVERSABLE)
+                                .filter(adj -> !Unit.unitPresentAt(adj, cavern.elves()))
+                                .filter(adj -> !Unit.unitPresentAt(adj, cavern.goblins()))
                                 .map(path::extend))
                         .filter(path -> !searched.contains(path.end()))
                         .toList();
@@ -187,21 +232,33 @@ public class AOC2018Day15 extends AOCDay<Integer> {
             return results.stream().min(Comparator.naturalOrder());
         }
 
-        private Coordinates coordinates() {
+        protected void step(CavernPath path) {
+            var step = path.step();
+            assert CavernPath.manhattan(coordinates(), step) == 1;
+            this.x = step.x();
+            this.y = step.y();
+        }
+
+        protected Coordinates coordinates() {
             return Coordinates.at(x, y);
         }
 
-        private int x() {
+        protected int x() {
             return x;
         }
 
-        private int y() {
+        protected int y() {
             return y;
         }
 
         @Override
         public String toString() {
             return "(" + x + ", " + y + ")";
+        }
+
+        @Override
+        public int compareTo(Unit that) {
+            return READING_COORDINATES_COMPARATOR.compare(this, that);
         }
 
         private static class Builder {
