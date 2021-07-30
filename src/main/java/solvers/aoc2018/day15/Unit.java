@@ -1,7 +1,13 @@
 package solvers.aoc2018.day15;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Logger;
+import utils.SetUtils;
+
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.function.Predicate.not;
 
 abstract class Unit implements Comparable<Unit> {
     protected static final Comparator<Unit> READING_ORDER_COMPARATOR =
@@ -9,7 +15,7 @@ abstract class Unit implements Comparable<Unit> {
     protected static final Comparator<Unit> DISPLAY_ORDER_COMPARATOR =
             Comparator.comparing(Unit::x).thenComparing(Unit::y);
     protected static final int ATK = 3;
-
+    private static final Logger LOGGER = (Logger) LogManager.getLogger(Unit.class);
     protected final Cavern cavern;
     protected int x;
     protected int y;
@@ -28,75 +34,179 @@ abstract class Unit implements Comparable<Unit> {
         this.hp = 200;
     }
 
-    protected void move(Coordinates coordinates) {
-        move(coordinates.x(), coordinates.y());
+    // Returns the coordinates of the squares adjacent to the square this unit is on.
+    private List<Coordinates> adjacent() {
+        return this.cavern.adjacent(this.x, this.y);
     }
 
-    protected void move(int x, int y) {
+    // Each unit begins its turn by identifying all possible targets (enemy units).
+    protected abstract List<? extends Unit> enemies();
+
+    // Then, the unit identifies all the open squares (.) that are in range of each target;
+    // these are the squares which are adjacent (immediately up, down, left, or right) to any target and
+    // which aren't already occupied by a wall or another unit.
+    private List<Coordinates> targets() {
+        // LOGGER.debug("Enemies: {}", enemies());
+        // LOGGER.debug("Targets: {}", coordinates);
+        return enemies().stream()
+                .map(Unit::coordinates)
+                .flatMap(c -> cavern.adjacent(c).stream())
+                .filter(c -> cavern.at(c) == Cavern.TRAVERSABLE)
+                .toList();
+    }
+
+    private boolean isInRangeOfEnemy() {
+        var adjacent = adjacent();
+        return enemies().stream()
+                .map(Unit::coordinates)
+                .anyMatch(adjacent::contains);
+    }
+
+    // Returns the best square that is in range of an enemy for this unit to lock on to, if it exists.
+    // If multiple squares are in range and tied for being reachable in the fewest steps,
+    // the square which is first in reading order is chosen.
+    private Optional<Coordinates> target() {
+        // Case 1: No enemies are present.
+        if (this.enemies().isEmpty()) return Optional.empty();
+
+        // Case 2: Enemies are present, but none are targetable.
+        if (this.targets().isEmpty()) return Optional.empty();
+
+        // Case 3: Enemies are present and targetable, and this unit is already adjacent to one, i.e., on a target square.
+        assert this.enemies().stream()
+                .map(Unit::coordinates)
+                .noneMatch(this.coordinates()::equals)
+                : "Unit should not target itself.";
+        if (this.isInRangeOfEnemy()) return Optional.of(this.coordinates());
+
+        // Case 4: Enemies are present and targetable, but this unit is not in range of an enemy.
+        var targets = this.targets();
+        var queue = Set.of(this.coordinates());
+        var searched = new HashSet<>(Set.of(this.coordinates()));
+        Set<Coordinates> targetLocks;
+
+        // Find the nearest square(s) to be in range of an enemy (the target squares) by breadth-first-search.
+        do {
+            // Replace the search queue with the squares that are adjacent to the previously searched squares.
+            queue = cavern.adjacent(queue)
+                    .stream()
+                    .filter(not(searched::contains))
+                    .filter(c -> cavern.at(c) == Cavern.TRAVERSABLE)
+                    .collect(Collectors.toSet());
+
+            // Add the target squares in the queue to the set of target locks.
+            targetLocks = SetUtils.intersection(queue, targets);
+
+            // Mark the squares in the queue as searched.
+            searched.addAll(queue);
+
+            // Repeat until all squares in the cavern have been searched, or target square(s) are found.
+        } while (targetLocks.isEmpty() && !queue.isEmpty());
+
+        // Return the best target square, if one exists, based on reading order,
+        // as all target locked squares are equidistant from this unit's coordinates.
+        return targetLocks.stream().min(Coordinates.READING_ORDER_COMPARATOR);
+    }
+
+    // Returns the distance of the shortest path from between 2 specified coordinates.
+    private Optional<Integer> distance(Coordinates start, Coordinates end) {
+        // Case 1: Any of the coordinates specified are out of bounds.
+        if (start.x() < 0 || start.x() >= this.cavern.width())
+            throw new IndexOutOfBoundsException(start.toString());
+        if (start.y() < 0 || start.y() >= this.cavern.height())
+            throw new IndexOutOfBoundsException(start.toString());
+        if (end.x() < 0 || end.x() >= this.cavern.width())
+            throw new IndexOutOfBoundsException(end.toString());
+        if (end.y() < 0 || end.y() >= this.cavern.height())
+            throw new IndexOutOfBoundsException(end.toString());
+
+        // Case 2: Both coordinates are equal.
+        if (start.equals(end)) return Optional.of(0);
+
+        // Case 3: The square at the starting coordinates is completely surrounded by un-traversable terrain.
+        if (this.cavern.adjacent(start).stream()
+                .noneMatch(c -> this.cavern.at(c) == Cavern.TRAVERSABLE)) {
+            return Optional.empty();
+        }
+
+        // Case 4: The square at the ending coordinates is completely surrounded by un-traversable terrain.
+        if (this.cavern.adjacent(end).stream()
+                .noneMatch(c -> this.cavern.at(c) == Cavern.TRAVERSABLE)) {
+            return Optional.empty();
+        }
+
+        // Case 5: Otherwise, a path from the starting coordinates to the ending coordinates may exist.
+        var queue = Set.of(start);
+        var searched = new HashSet<>(Set.of(start));
+
+        for (int distance = 1; !queue.isEmpty(); distance++) {
+            // Replace the search queue with the squares that are adjacent to the previously searched squares.
+            queue = cavern.adjacent(queue)
+                    .stream()
+                    .filter(not(searched::contains))
+                    .filter(c -> cavern.at(c) == Cavern.TRAVERSABLE)
+                    .collect(Collectors.toSet());
+
+            // If a valid path can be found, return the distance found.
+            if (queue.contains(end)) return Optional.of(distance);
+
+            // Mark the squares in the queue as searched.
+            searched.addAll(queue);
+        }
+
+        // Case 5: No path from this unit to the coordinates specified exists.
+        return Optional.empty();
+    }
+
+    // Returns the single best step toward the target, if it exists.
+    // If multiple steps would put the unit equally closer to its destination,
+    // this unit chooses the step which is first in reading order.
+    private Optional<Coordinates> pathfind(Coordinates end) {
+        if (this.coordinates().equals(end)) return Optional.empty();
+        var distances = new HashMap<Coordinates, Integer>();
+        for (Coordinates start : adjacent()) {
+            if (this.cavern.at(start) != Cavern.TRAVERSABLE) continue;
+            this.distance(start, end).ifPresent(d -> distances.put(start, d));
+        }
+        if (distances.isEmpty()) return Optional.empty();
+        var shortestDistance = distances.values().stream()
+                .min(Comparator.naturalOrder())
+                .orElseThrow();
+        return distances.entrySet().stream()
+                .filter(e -> e.getValue().equals(shortestDistance))
+                .map(Map.Entry::getKey)
+                .min(Coordinates.READING_ORDER_COMPARATOR);
+    }
+
+    // If this unit is not in range of a target, it moves.
+    protected void move() {
+        LOGGER.debug("Currently at {}.", this);
+
+        // To move, the unit first considers the squares that are in range and
+        // determines which of those squares it could reach in the fewest steps.
+        // LOGGER.info("Pre-step: {}", coordinates());
+        var target = target();
+        if (target.isPresent()) {
+            LOGGER.debug("Acquired target lock on {}.", target.get());
+        } else {
+            LOGGER.warn("Unable to acquire target lock.");
+            return;
+        }
+
+        var move = pathfind(target.get());
+        if (move.isPresent()) {
+            LOGGER.info("Moving 1 step toward target to {}.", move.get());
+            move(move.get());
+        }
+    }
+
+    private void move(int x, int y) {
         this.x = x;
         this.y = y;
     }
 
-    protected void move(Path path) {
-        var step = path.step();
-        assert this.coordinates().manhattan(step) == 1;
-        this.x = step.x();
-        this.y = step.y();
-    }
-
-    protected Optional<Path> pathfind(char target) {
-        if (target != Cavern.ELF && target != Cavern.GOBLIN) throw new IllegalArgumentException(String.valueOf(target));
-        var start = Coordinates.at(x, y);
-        var adjacent = cavern.adjacent(start);
-        var targets = (target == Cavern.ELF ? cavern.elves() : cavern.goblins())
-                .stream()
-                .map(Unit::coordinates)
-                .map(cavern::adjacent)
-                .flatMap(List::stream)
-                .collect(Collectors.toSet());
-
-        // Check if this unit is already adjacent to a target unit.
-        // If it is, return an empty Optional as this unit will not need to move.
-        if (adjacent.stream().anyMatch(adj -> cavern.at(adj) == target)) {
-            return Optional.empty();
-        }
-
-        var paths = adjacent.stream()
-                .filter(adj -> cavern.map()[adj.x()][adj.y()] == Cavern.TRAVERSABLE)
-                .map(adj -> Path.of(start, adj))
-                .toList();
-        var searched = new HashSet<Coordinates>();
-        searched.add(start);
-        var results = new HashSet<Path>();
-
-        while (!paths.isEmpty()) {
-            // Add the paths that end at a target coordinate to the set of results.
-            results = paths.stream()
-                    .parallel()
-                    .filter(path -> targets.contains(path.end()))
-                    .collect(Collectors.toCollection(HashSet::new));
-
-            // Optimization: Return the paths that end on a target coordinate, if any, otherwise continue.
-            if (!results.isEmpty()) break;
-
-            // Mark the coordinates that have been searched.
-            paths.stream()
-                    .map(Path::end)
-                    .forEach(searched::add);
-
-            // Add all branching paths - by adjacent tile extension - to the list of paths,
-            // pruning those that end in coordinates that have already been searched,
-            // and those that end in coordinates that are not traversable.
-            paths = paths.stream()
-                    .parallel()
-                    .flatMap(path -> cavern.adjacent(path.end())
-                            .stream()
-                            .filter(adj -> cavern.at(adj) == Cavern.TRAVERSABLE)
-                            .map(path::extend))
-                    .filter(path -> !searched.contains(path.end()))
-                    .toList();
-        }
-        return results.stream().min(Comparator.naturalOrder());
+    private void move(Coordinates coordinates) {
+        move(coordinates.x(), coordinates.y());
     }
 
     protected int x() {

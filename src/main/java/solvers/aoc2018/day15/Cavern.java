@@ -1,6 +1,7 @@
 package solvers.aoc2018.day15;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 record Cavern(char[][] map, int width, int height, List<Goblin> goblins, List<Elf> elves) {
@@ -80,6 +81,13 @@ record Cavern(char[][] map, int width, int height, List<Goblin> goblins, List<El
     protected List<Coordinates> adjacent(Coordinates coordinates) {
         return adjacent(coordinates.x(), coordinates.y()).stream()
                 .map(c -> Coordinates.at(c.x(), c.y()))
+                .toList();
+    }
+
+    protected List<Coordinates> adjacent(Collection<Coordinates> coordinates) {
+        return coordinates.stream()
+                .map(this::adjacent)
+                .flatMap(List::stream)
                 .toList();
     }
 

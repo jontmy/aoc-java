@@ -5,6 +5,8 @@ import java.util.Comparator;
 record Coordinates(int x, int y) implements Comparable<Coordinates> {
     protected static final Comparator<Coordinates> READING_ORDER_COMPARATOR =
             Comparator.comparing(Coordinates::y).thenComparing(Coordinates::x);
+    protected static final Comparator<Coordinates> DISPLAY_ORDER_COMPARATOR =
+            Comparator.comparing(Coordinates::x).thenComparing(Coordinates::y);
 
     protected static Coordinates at(int x, int y) {
         return new Coordinates(x, y);
@@ -46,6 +48,6 @@ record Coordinates(int x, int y) implements Comparable<Coordinates> {
 
     @Override
     public String toString() {
-        return "(%d, %d}".formatted(x, y);
+        return "(%d, %d)".formatted(x, y);
     }
 }
