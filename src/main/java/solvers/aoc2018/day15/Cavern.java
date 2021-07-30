@@ -9,7 +9,7 @@ import java.util.stream.Stream;
 record Cavern(char[][] map, int width, int height, List<Goblin> goblins, List<Elf> elves) {
     protected static final char WALL = '#', TRAVERSABLE = '.', GOBLIN = 'G', ELF = 'E';
 
-    protected static Cavern parse(List<String> data) {
+    protected static Cavern parse(List<String> data, int elfAtk) {
         var height = data.size();
         var widths = data.stream()
                 .map(String::length)
@@ -46,7 +46,7 @@ record Cavern(char[][] map, int width, int height, List<Goblin> goblins, List<El
                 .map(g -> new Goblin(cavern, g))
                 .forEach(cavern.goblins()::add);
         elves.stream()
-                .map(e -> new Elf(cavern, e))
+                .map(e -> new Elf(cavern, e, elfAtk))
                 .forEach(cavern.elves()::add);
         return cavern;
     }

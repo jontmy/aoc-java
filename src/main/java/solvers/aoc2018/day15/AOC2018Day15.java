@@ -13,12 +13,17 @@ public class AOC2018Day15 extends AOCDay<Integer> {
 
     @Override
     protected Integer solvePartOne(List<String> input) {
-        var simulation = Simulation.of(input);
+        var simulation = Simulation.of(input, 3);
         return simulation.simulateToCompletion();
     }
 
     @Override
     protected Integer solvePartTwo(List<String> input) {
-        return 0;
+        for (int atk = 3;; atk++) {
+            var simulation = Simulation.of(input, atk);
+            var nElves = simulation.cavern().elves().size();
+            var outcome = simulation.simulateToCompletion();
+            if (simulation.cavern().elves().size() == nElves) return outcome;
+        }
     }
 }

@@ -4,7 +4,7 @@ import java.util.List;
 
 final class Goblin extends Unit {
     protected Goblin(Cavern cavern, Coordinates coordinates) {
-        super(cavern, coordinates);
+        super(cavern, coordinates, 3);
     }
 
     @Override

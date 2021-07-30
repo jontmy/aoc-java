@@ -3,8 +3,8 @@ package solvers.aoc2018.day15;
 import java.util.List;
 
 final class Elf extends Unit {
-    protected Elf(Cavern cavern, Coordinates coordinates) {
-        super(cavern, coordinates);
+    protected Elf(Cavern cavern, Coordinates coordinates, int atk) {
+        super(cavern, coordinates, atk);
     }
 
     @Override

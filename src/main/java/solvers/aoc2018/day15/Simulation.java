@@ -12,8 +12,8 @@ import java.util.PriorityQueue;
 record Simulation(Cavern cavern) {
     private static final Logger LOGGER = (Logger) LogManager.getLogger(Simulation.class);
 
-    protected static Simulation of(List<String> input) {
-        return new Simulation(Cavern.parse(input));
+    protected static Simulation of(List<String> input, int elfAtk) {
+        return new Simulation(Cavern.parse(input, elfAtk));
     }
 
     // Returns true if the round completed with all units having acted, otherwise false.
@@ -34,11 +34,10 @@ record Simulation(Cavern cavern) {
     protected int simulateToCompletion() {
         var rounds = 0;
         boolean roundCompleted;
-        while (true) {
+        do {
             roundCompleted = simulateRound();
             if (roundCompleted) rounds++;
-            if (cavern.goblins().isEmpty() || cavern.elves().isEmpty()) break;
-        }
+        } while (!cavern.goblins().isEmpty() && !cavern.elves().isEmpty());
         LOGGER.info("Simulation ends after {} rounds.", rounds);
         var remainingHP = (cavern.goblins().isEmpty() ? cavern.elves() : cavern.goblins())
                 .stream()

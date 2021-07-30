@@ -14,16 +14,19 @@ abstract class Unit implements Comparable<Unit> {
             Comparator.comparing(Unit::y).thenComparing(Unit::x);
     protected static final Comparator<Unit> DISPLAY_ORDER_COMPARATOR =
             Comparator.comparing(Unit::x).thenComparing(Unit::y);
-    protected static final int ATK = 3, INITIAL_HP = 200;
+    protected static final int INITIAL_HP = 200;
     private static final Logger LOGGER = (Logger) LogManager.getLogger(Unit.class);
     protected final Cavern cavern;
+    protected final int atk;
+
     protected int x;
     protected int y;
     protected int hp;
 
-    protected Unit(Cavern cavern, Coordinates coordinates) {
+    protected Unit(Cavern cavern, Coordinates coordinates, int atk) {
         Objects.requireNonNull(cavern);
         this.cavern = cavern;
+        this.atk = atk;
 
         Objects.requireNonNull(coordinates);
         if (coordinates.x() < 0) throw new IllegalArgumentException(coordinates.toString());
@@ -224,8 +227,8 @@ abstract class Unit implements Comparable<Unit> {
 
         // The unit deals damage equal to its attack power to the selected target,
         // reducing its hit points by that amount.
-        enemy.hp -= Unit.ATK;
-        LOGGER.warn("{} deals {} damage to {}.", this, Unit.ATK, enemy);
+        enemy.hp -= this.atk;
+        LOGGER.warn("{} deals {} damage to {}.", this, this.atk, enemy);
 
         // If this reduces its hit points to 0 or fewer, the selected target dies, taking no further turns.
         if (enemy.hp <= 0) {
