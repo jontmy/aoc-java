@@ -2,7 +2,9 @@ package solvers.aoc2018.day15;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 record Cavern(char[][] map, int width, int height, List<Goblin> goblins, List<Elf> elves) {
     protected static final char WALL = '#', TRAVERSABLE = '.', GOBLIN = 'G', ELF = 'E';
@@ -98,6 +100,17 @@ record Cavern(char[][] map, int width, int height, List<Goblin> goblins, List<El
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 sb.append(at(x, y));
+            }
+            var row = y;
+            var units = Stream.concat(goblins.stream(), elves.stream())
+                    .filter(unit -> unit.y() == row)
+                    .sorted(Comparator.comparing(Unit::x, Comparator.naturalOrder()))
+                    .toList();
+            sb.append("  ");
+            for (Unit unit : units) {
+                if (unit instanceof Goblin) sb.append("G(");
+                else if (unit instanceof Elf) sb.append("E(");
+                sb.append(unit.hp()).append(") ");
             }
             sb.append("\n");
         }

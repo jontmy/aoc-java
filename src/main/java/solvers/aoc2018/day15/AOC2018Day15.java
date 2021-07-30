@@ -14,14 +14,7 @@ public class AOC2018Day15 extends AOCDay<Integer> {
     @Override
     protected Integer solvePartOne(List<String> input) {
         var simulation = Simulation.of(input);
-        var cavern = simulation.cavern();
-        // LOGGER.debug(cavern);
-        while (true) {
-            var moved = simulation.simulateRound();
-            if (!moved) break;
-        }
-        LOGGER.debug(cavern);
-        return 0;
+        return simulation.simulateToCompletion();
     }
 
     @Override

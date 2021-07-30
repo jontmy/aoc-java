@@ -14,7 +14,7 @@ abstract class Unit implements Comparable<Unit> {
             Comparator.comparing(Unit::y).thenComparing(Unit::x);
     protected static final Comparator<Unit> DISPLAY_ORDER_COMPARATOR =
             Comparator.comparing(Unit::x).thenComparing(Unit::y);
-    protected static final int ATK = 3;
+    protected static final int ATK = 3, INITIAL_HP = 200;
     private static final Logger LOGGER = (Logger) LogManager.getLogger(Unit.class);
     protected final Cavern cavern;
     protected int x;
@@ -30,8 +30,7 @@ abstract class Unit implements Comparable<Unit> {
         if (coordinates.y() < 0) throw new IllegalArgumentException(coordinates.toString());
         this.x = coordinates.x();
         this.y = coordinates.y();
-
-        this.hp = 200;
+        this.hp = INITIAL_HP;
     }
 
     // Returns the coordinates of the squares adjacent to the square this unit is on.
@@ -46,8 +45,6 @@ abstract class Unit implements Comparable<Unit> {
     // these are the squares which are adjacent (immediately up, down, left, or right) to any target and
     // which aren't already occupied by a wall or another unit.
     private List<Coordinates> targets() {
-        // LOGGER.debug("Enemies: {}", enemies());
-        // LOGGER.debug("Targets: {}", coordinates);
         return enemies().stream()
                 .map(Unit::coordinates)
                 .flatMap(c -> cavern.adjacent(c).stream())
@@ -55,6 +52,7 @@ abstract class Unit implements Comparable<Unit> {
                 .toList();
     }
 
+    // Returns true if this unit is adjacent to an enemy unit, otherwise false.
     private boolean isInRangeOfEnemy() {
         var adjacent = adjacent();
         return enemies().stream()
@@ -178,43 +176,88 @@ abstract class Unit implements Comparable<Unit> {
                 .min(Coordinates.READING_ORDER_COMPARATOR);
     }
 
-    // If this unit is not in range of a target, it moves.
-    protected void move() {
-        LOGGER.debug("Currently at {}.", this);
-
+    // Returns true if this unit moved this turn, otherwise false.
+    private boolean move() {
         // To move, the unit first considers the squares that are in range and
         // determines which of those squares it could reach in the fewest steps.
-        // LOGGER.info("Pre-step: {}", coordinates());
         var target = target();
         if (target.isPresent()) {
-            LOGGER.debug("Acquired target lock on {}.", target.get());
+            LOGGER.debug("{} acquired a target lock on {}.", this, target.get());
         } else {
-            LOGGER.warn("Unable to acquire target lock.");
-            return;
+            // If the unit cannot reach (find an open path to) any of the squares that are in range, it ends its turn.
+            LOGGER.debug("{} was unable to acquire a target lock on any enemy.", this);
         }
 
-        var move = pathfind(target.get());
+        // The unit then takes a single step toward the chosen square along the shortest path to that square.
+        var move = target.flatMap(this::pathfind);
         if (move.isPresent()) {
             LOGGER.info("Moving 1 step toward target to {}.", move.get());
-            move(move.get());
+            assert this.coordinates().manhattan(move.get()) == 1 : "Unit may only move 1 step.";
+            this.x = move.get().x();
+            this.y = move.get().y();
         }
+        return target.isPresent() && move.isPresent();
     }
 
-    private void move(int x, int y) {
-        this.x = x;
-        this.y = y;
+    // Returns true if this unit attacked an enemy this turn, otherwise false.
+    private boolean attack() {
+        // To attack, the unit first determines all the targets that are in range of it
+        // by being immediately adjacent to it.
+        var adjacent = adjacent();
+        var enemies = enemies().stream()
+                .filter(enemy -> adjacent.contains(enemy.coordinates()))
+                .toList();
+
+        // If there are no such targets, the unit ends its turn.
+        if (enemies.isEmpty()) {
+            LOGGER.debug("{} has no enemies in range to attack.", this);
+            return false;
+        }
+
+        // Otherwise, the adjacent target with the fewest hit points is selected.
+        // In a tie, the adjacent target with the fewest hit points which is first in reading order is selected.
+        var enemy = enemies.stream()
+                .min(Comparator.comparing(Unit::hp)
+                        .thenComparing(Unit::coordinates, Coordinates.READING_ORDER_COMPARATOR))
+                .orElseThrow();
+        LOGGER.debug("{} attacks {}!", this, enemy);
+
+        // The unit deals damage equal to its attack power to the selected target,
+        // reducing its hit points by that amount.
+        enemy.hp -= Unit.ATK;
+        LOGGER.warn("{} deals {} damage to {}.", this, Unit.ATK, enemy);
+
+        // If this reduces its hit points to 0 or fewer, the selected target dies, taking no further turns.
+        if (enemy.hp <= 0) {
+            LOGGER.error("{} kills {}!", this, enemy);
+            this.enemies().remove(enemy);
+        }
+        return true;
     }
 
-    private void move(Coordinates coordinates) {
-        move(coordinates.x(), coordinates.y());
+    // Combat proceeds in rounds; in each round, each unit that is still alive takes a turn,
+    // resolving all of its actions before the next unit's turn begins.
+    // Returns true if this unit moved and/or attacked this turn, otherwise false.
+    protected boolean act() {
+        LOGGER.debug("{}'s turn...", this);
+
+        // On each unit's turn, it tries to move into range of an enemy On each unit's turn,
+        // it tries to move into range of an enemy (if it isn't already) and then attack (if it is in range).
+        var moved = move();
+        var attacked = attack();
+        return moved || attacked;
     }
 
     protected int x() {
-        return x;
+        return this.x;
     }
 
     protected int y() {
-        return y;
+        return this.y;
+    }
+
+    protected int hp() {
+        return this.hp;
     }
 
     protected Coordinates coordinates() {
@@ -228,6 +271,6 @@ abstract class Unit implements Comparable<Unit> {
 
     @Override
     public String toString() {
-        return coordinates().toString();
+        return "(%d, %d, %s HP)".formatted(x, y, hp);
     }
 }
