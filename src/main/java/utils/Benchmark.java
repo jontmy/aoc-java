@@ -10,7 +10,7 @@ public class Benchmark<T, R> {
     private final T input;
     private final Function<T, R> function;
     private int runs = 0;
-    private long min = 0, max = 0, sum = 0; // durations in ms
+    private long min = 0, max = 0, sum = 0; // durations in μs
 
     public Benchmark(T input, Function<T, R> function) {
         this.input = input;
@@ -25,12 +25,12 @@ public class Benchmark<T, R> {
         var start = System.nanoTime();
         R result = function.apply(input);
         var end = System.nanoTime();
-        var duration = TimeUnit.NANOSECONDS.toMillis(end - start);
+        var duration = TimeUnit.NANOSECONDS.toMicros(end - start);
         runs++;
         sum += duration;
         min = min(min, duration);
         max = max(max, duration);
-        return Pair.of(result, (double) sum / runs);
+        return Pair.of(result, (double) sum / runs / 1000);
     }
 
     public Pair<R, Double> run(int runs) {
@@ -39,6 +39,6 @@ public class Benchmark<T, R> {
             var intermediate = run().left();
             assert intermediate.equals(result) : "Results differ between runs: '%s' vs '%s' on run #%d".formatted(intermediate, result, this.runs);
         }
-        return Pair.of(result, (double) sum / runs);
+        return Pair.of(result, (double) sum / runs / 1000);
     }
 }
