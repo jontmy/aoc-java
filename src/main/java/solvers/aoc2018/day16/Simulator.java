@@ -3,6 +3,7 @@ package solvers.aoc2018.day16;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -16,12 +17,12 @@ record Simulator(Registers before, Instruction instruction, Registers after) {
                     Instructions::eqir, Instructions::eqri, Instructions::eqrr
             );
 
-    protected int matching() {
-        var matching = 0;
-        for (BiConsumer<Registers, Instruction> consumer : INSTRUCTIONS) {
+    protected List<BiConsumer<Registers, Instruction>> operations() {
+        var matching = new ArrayList<BiConsumer<Registers, Instruction>>();
+        for (BiConsumer<Registers, Instruction> operation : INSTRUCTIONS) {
             var simulable = Registers.from(before);
-            consumer.accept(simulable, instruction);
-            if (simulable.equals(after)) matching++;
+            operation.accept(simulable, instruction);
+            if (simulable.equals(after)) matching.add(operation);
         }
         return matching;
     }

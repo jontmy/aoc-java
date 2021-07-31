@@ -41,8 +41,8 @@ public class AOC2018Day16 extends AOCDay<Integer> {
     @Override
     protected Integer solvePartOne(List<String> input) {
         return (int) simulators.stream()
-                .map(Simulator::matching)
-                .filter(i -> i >= 3)
+                .map(Simulator::operations)
+                .filter(ops -> ops.size() >= 3)
                 .count();
     }
 
