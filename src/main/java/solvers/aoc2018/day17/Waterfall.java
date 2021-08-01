@@ -4,11 +4,14 @@ import utils.Coordinates;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.stream.IntStream;
 
-record Waterfall(char[][] slice, int width, int height, ArrayList<Coordinates> sources) {
+record Waterfall(char[][] slice, int width, int height, ArrayDeque<Coordinates> sources) {
+    protected static final char SAND = '.', CLAY = '#', FLOW = '|', WATER = '~';
+
     protected static Waterfall of(char[][] slice, int width, int height, int sourceX) {
-        var sources = new ArrayList<Coordinates>();
+        var sources = new ArrayDeque<Coordinates>();
         sources.add(Coordinates.at(sourceX, 0));
         return new Waterfall(slice, width, height, sources);
     }
@@ -18,7 +21,15 @@ record Waterfall(char[][] slice, int width, int height, ArrayList<Coordinates> s
         for (int x = 0; x < source.width(); x++) {
             System.arraycopy(source.slice()[x], 0, copy[x], 0, source.height());
         }
-        return new Waterfall(copy, source.width(), source.height(), new ArrayList<>(source.sources()));
+        return new Waterfall(copy, source.width(), source.height(), new ArrayDeque<>(source.sources()));
+    }
+
+    protected char get(int x, int y) {
+        return slice[x][y];
+    }
+
+    protected void set(int x, int y, char val) {
+        slice[x][y] = val;
     }
 
     protected BufferedImage toImage() {
@@ -26,8 +37,10 @@ record Waterfall(char[][] slice, int width, int height, ArrayList<Coordinates> s
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 int color = switch (slice[x][y]) {
-                    case '#' -> Color.BLACK.getRGB();
-                    case '|' -> Color.BLUE.getRGB();
+                    case SAND -> Color.YELLOW.brighter().brighter().brighter().brighter().getRGB();
+                    case CLAY -> Color.PINK.darker().darker().darker().getRGB();
+                    case '|' -> Color.CYAN.darker().getRGB();
+                    case '~' -> Color.BLUE.brighter().brighter().getRGB();
                     default -> Color.WHITE.getRGB();
                 };
                 image.setRGB(x, y, color);

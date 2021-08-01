@@ -115,6 +115,14 @@ public class AOC2018Day17 extends AOCDay<Integer> {
         width += 2; // provide a 1px buffer at each of the horizontal bounds
         var slice = new char[width][height];
 
+        // Fill the slice with sand.
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                slice[x][y] = Waterfall.SAND; // compensating for the 1px buffer at each of the horizontal bounds
+            }
+        }
+
+        // Fill the slice with clay from the lines.
         for (Line line : translated) {
             assert line.x1() == line.x2() || line.y1() == line.y2() : "Lines must either be horizontal or vertical.";
             assert line.x1() <= line.x2();
@@ -122,12 +130,14 @@ public class AOC2018Day17 extends AOCDay<Integer> {
 
             for (int x = line.x1(); x <= line.x2(); x++) {
                 for (int y = line.y1(); y <= line.y2(); y++) {
-                    slice[x + 1][y] = '#'; // compensating for the 1px buffer at each of the horizontal bounds
+                    slice[x + 1][y] = Waterfall.CLAY; // compensating for the 1px buffer at each of the horizontal bounds
                 }
             }
         }
+
+        // Add the initial water source block.
         var sourceX = 500 - xMin + 1;
-        slice[sourceX][0] = '|';
+        slice[sourceX][0] = Waterfall.FLOW;
         return Waterfall.of(slice, width, height, sourceX);
     }
 
