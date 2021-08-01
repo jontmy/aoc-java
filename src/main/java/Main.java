@@ -1,3 +1,4 @@
+import solvers.aoc2018.AOC2018Day18;
 import solvers.aoc2018.day17.AOC2018Day17;
 
 import java.io.IOException;
@@ -22,7 +23,8 @@ public class Main {
         new AOC2018Day14().solve();
         new AOC2018Day15().solve();
         new AOC2018Day16().solve();
-        */
         new AOC2018Day17().solve();
+        */
+        new AOC2018Day18().solve();
     }
 }
