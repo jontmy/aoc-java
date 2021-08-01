@@ -1,5 +1,4 @@
-import solvers.aoc2018.AOC2018Day17;
-import solvers.aoc2018.day16.AOC2018Day16;
+import solvers.aoc2018.day17.AOC2018Day17;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
