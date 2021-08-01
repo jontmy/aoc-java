@@ -17,6 +17,7 @@ import static utils.RegexUtils.*;
 
 public class AOC2018Day17 extends AOCDay<Integer> {
     private static final Pattern REGEX_LINE;
+    private final Waterfall initial;
 
     static {
         var REGEX_AXIS = group(or("x", "y"));
@@ -27,15 +28,8 @@ public class AOC2018Day17 extends AOCDay<Integer> {
 
     public AOC2018Day17() throws IOException, URISyntaxException {
         super(17, 2018);
-        var waterfall = parse();
-        try {
-            var path = Path.of("src/main/resources/output/2018/day17/initial.png");
-            Files.deleteIfExists(path);
-            Files.createFile(path);
-            ImageIO.write(waterfall.toImage(), "png", path.toFile());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.initial = parse();
+
     }
 
     private Waterfall parse() {
@@ -143,11 +137,27 @@ public class AOC2018Day17 extends AOCDay<Integer> {
 
     @Override
     protected Integer solvePartOne(List<String> input) {
-        return 0;
+        var waterfall = Waterfall.from(initial);
+        try {
+            var path = Path.of("src/main/resources/output/2018/day17/before.png");
+            Files.deleteIfExists(path);
+            Files.createFile(path);
+            ImageIO.write(waterfall.toImage(), "png", path.toFile());
+            waterfall.flow();
+            path = Path.of("src/main/resources/output/2018/day17/after.png");
+            Files.deleteIfExists(path);
+            Files.createFile(path);
+            ImageIO.write(waterfall.toImage(), "png", path.toFile());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return waterfall.waterlogged();
     }
 
     @Override
     protected Integer solvePartTwo(List<String> input) {
-        return 0;
+        var waterfall = Waterfall.from(initial);
+        waterfall.flow();
+        return waterfall.retained();
     }
 }

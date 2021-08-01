@@ -28,4 +28,8 @@ public final class StreamUtils {
         return IntStream.rangeClosed(startInclusive, endInclusive)
                 .map(i -> endInclusive - i + startInclusive);
     }
+
+    public static void main(String[] args) {
+        reversedRangeClosed(0, 5).forEach(System.out::println);
+    }
 }

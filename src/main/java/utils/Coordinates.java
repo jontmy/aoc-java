@@ -25,6 +25,10 @@ public record Coordinates(int x, int y) implements Comparable<Coordinates> {
         return manhattan(this, that);
     }
 
+    public Coordinates translate(int dx, int dy) {
+        return Coordinates.at(this.x + dx, this.y + dy);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
