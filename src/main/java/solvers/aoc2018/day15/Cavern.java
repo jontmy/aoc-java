@@ -1,5 +1,7 @@
 package solvers.aoc2018.day15;
 
+import utils.Coordinates;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;

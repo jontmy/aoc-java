@@ -2,6 +2,7 @@ package solvers.aoc2018.day15;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.Logger;
+import utils.Coordinates;
 import utils.SetUtils;
 
 import java.util.*;

@@ -1,27 +1,27 @@
-package solvers.aoc2018.day15;
+package utils;
 
 import java.util.Comparator;
 
-record Coordinates(int x, int y) implements Comparable<Coordinates> {
-    protected static final Comparator<Coordinates> READING_ORDER_COMPARATOR =
+public record Coordinates(int x, int y) implements Comparable<Coordinates> {
+    public static final Comparator<Coordinates> READING_ORDER_COMPARATOR =
             Comparator.comparing(Coordinates::y).thenComparing(Coordinates::x);
-    protected static final Comparator<Coordinates> DISPLAY_ORDER_COMPARATOR =
+    public static final Comparator<Coordinates> DISPLAY_ORDER_COMPARATOR =
             Comparator.comparing(Coordinates::x).thenComparing(Coordinates::y);
 
-    protected static Coordinates at(int x, int y) {
+    public static Coordinates at(int x, int y) {
         return new Coordinates(x, y);
     }
 
-    protected static Coordinates from(Coordinates coords) {
+    public static Coordinates from(Coordinates coords) {
         return new Coordinates(coords.x(), coords.y());
     }
 
     // Returns the Manhattan distance between 2 coordinates.
-    protected static int manhattan(Coordinates start, Coordinates end) {
+    public static int manhattan(Coordinates start, Coordinates end) {
         return Math.abs(start.x() - end.x()) + Math.abs(start.y() - end.y());
     }
 
-    protected int manhattan(Coordinates that) {
+    public int manhattan(Coordinates that) {
         return manhattan(this, that);
     }
 
