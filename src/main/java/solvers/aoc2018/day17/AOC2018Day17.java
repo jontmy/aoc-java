@@ -17,7 +17,6 @@ import static utils.RegexUtils.*;
 
 public class AOC2018Day17 extends AOCDay<Integer> {
     private static final Pattern REGEX_LINE;
-    private final Waterfall initial;
 
     static {
         var REGEX_AXIS = group(or("x", "y"));
@@ -25,6 +24,8 @@ public class AOC2018Day17 extends AOCDay<Integer> {
         var REGEX_RANGE = join(REGEX_NUMBER, "..", REGEX_NUMBER);
         REGEX_LINE = compile(join(REGEX_AXIS, "=", REGEX_NUMBER, ", ", REGEX_AXIS, "=", REGEX_RANGE));
     }
+
+    private final Waterfall initial;
 
     public AOC2018Day17() throws IOException, URISyntaxException {
         super(17, 2018);

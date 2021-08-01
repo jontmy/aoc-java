@@ -7,15 +7,16 @@ import utils.StreamUtils;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.ArrayDeque;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.IntStream;
 
-record Waterfall(char[][] slice, int width, int height, ArrayDeque<Coordinates> sources) {
+record Waterfall(char[][] slice, int width, int height, Set<Coordinates> sources) {
     protected static final Logger LOGGER = (Logger) LogManager.getLogger(Waterfall.class);
     protected static final char SAND = '.', CLAY = '#', FLOW = '|', WATER = '~';
 
     protected static Waterfall of(char[][] slice, int width, int height, int sourceX) {
-        var sources = new ArrayDeque<Coordinates>();
+        var sources = new HashSet<Coordinates>();
         sources.add(Coordinates.at(sourceX, 0));
         return new Waterfall(slice, width, height, sources);
     }
@@ -25,7 +26,7 @@ record Waterfall(char[][] slice, int width, int height, ArrayDeque<Coordinates> 
         for (int x = 0; x < source.width(); x++) {
             System.arraycopy(source.slice()[x], 0, copy[x], 0, source.height());
         }
-        return new Waterfall(copy, source.width(), source.height(), new ArrayDeque<>(source.sources()));
+        return new Waterfall(copy, source.width(), source.height(), new HashSet<>(source.sources()));
     }
 
     protected char get(int x, int y) {
@@ -62,14 +63,10 @@ record Waterfall(char[][] slice, int width, int height, ArrayDeque<Coordinates> 
 
     // Causes all water source blocks to flow and fill the reservoirs in their downward path until they overflow.
     protected void flow() {
-        int j = 0;
         while (!sources.isEmpty()) {
-            LOGGER.debug(sources.size());
-            var n = sources.size();
-            for (int i = 0; i < n; i++) {
-                var source = sources.remove();
-                flow(source);
-            }
+            var copied = Set.copyOf(sources());
+            sources.clear();
+            copied.forEach(this::flow);
         }
     }
 
