@@ -126,7 +126,9 @@ public class AOC2018Day17 extends AOCDay<Integer> {
                 }
             }
         }
-        return Waterfall.of(slice, width, height);
+        var sourceX = 500 - xMin + 1;
+        slice[sourceX][0] = '|';
+        return Waterfall.of(slice, width, height, sourceX);
     }
 
     @Override
