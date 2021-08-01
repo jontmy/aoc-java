@@ -45,11 +45,11 @@ public abstract class AOCDay<R> {
     public void solve() throws IOException {
         var partOneBenchmark = Benchmark.of(input, this::solvePartOne);
         var partOneResults = partOneBenchmark.run(RUNS);
-        LOGGER.info("Advent of Code {}, day {}, part 1 -> {} (took {} ms)", year, day, partOneResults.left(), partOneResults.right());
+        LOGGER.info("Advent of Code {}, day {}, part 1 -> {} (took %.03f ms)".formatted(partOneResults.right()), year, day, partOneResults.left());
 
         var partTwoBenchmark = Benchmark.of(input, this::solvePartTwo);
         var partTwoResults = partTwoBenchmark.run(RUNS);
-        LOGGER.info("Advent of Code {}, day {}, part 2 -> {} (took {} ms)", year, day, partTwoResults.left(), partTwoResults.right());
+        LOGGER.info("Advent of Code {}, day {}, part 2 -> {} (took %.03f ms)".formatted(partOneResults.right()), year, day, partTwoResults.left());
 
         var path = Path.of("src/main/resources/output/%d/day%d.txt".formatted(year, day));
         Files.deleteIfExists(path);
