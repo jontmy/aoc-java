@@ -49,7 +49,7 @@ public abstract class AOCDay<R> {
 
         var partTwoBenchmark = Benchmark.of(input, this::solvePartTwo);
         var partTwoResults = partTwoBenchmark.run(RUNS);
-        LOGGER.info("Advent of Code {}, day {}, part 2 -> {} (took %.03f ms)".formatted(partOneResults.right()), year, day, partTwoResults.left());
+        LOGGER.info("Advent of Code {}, day {}, part 2 -> {} (took %.03f ms)".formatted(partTwoResults.right()), year, day, partTwoResults.left());
 
         var path = Path.of("src/main/resources/output/%d/day%d.txt".formatted(year, day));
         Files.deleteIfExists(path);
