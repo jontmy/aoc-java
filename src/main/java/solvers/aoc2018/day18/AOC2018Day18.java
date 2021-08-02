@@ -1,4 +1,4 @@
-package solvers.aoc2018;
+package solvers.aoc2018.day18;
 
 import solvers.AOCDay;
 
